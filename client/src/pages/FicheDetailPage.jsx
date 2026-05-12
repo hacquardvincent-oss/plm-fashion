@@ -248,7 +248,7 @@ export default function FicheDetailPage() {
 
   const getExportHref = (type) => {
     const base = import.meta.env.VITE_API_URL ?? '/api'
-    const token = localStorage.getItem('token')
+    const token = localStorage.getItem('plm_token')
     return `${base}/fiches/${id}/export/${type}?token=${token}`
   }
 
