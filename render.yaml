@@ -3,6 +3,7 @@ services:
     name: plm-fashion-api
     runtime: node
     plan: free
+    rootDir: .
     buildCommand: npm install
     startCommand: npm run migrate && npm start
     envVars:
@@ -10,8 +11,6 @@ services:
         value: production
       - key: JWT_SECRET
         generateValue: true
-      - key: ANTHROPIC_API_KEY
-        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: plm-fashion-db
@@ -20,6 +19,7 @@ services:
 
   - type: static
     name: plm-fashion
+    rootDir: client
     buildCommand: npm install --include=dev && npm run build
     staticPublishPath: dist
     envVars:
