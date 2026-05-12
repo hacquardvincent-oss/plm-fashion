@@ -7,6 +7,8 @@ import CollectionsPage from '../pages/CollectionsPage'
 import CollectionDetailPage from '../pages/CollectionDetailPage'
 import ProductDetailPage from '../pages/ProductDetailPage'
 import WorkflowsPage from '../pages/WorkflowsPage'
+import FichesPage from '../pages/FichesPage'
+import FicheDetailPage from '../pages/FicheDetailPage'
 import PlaceholderPage from '../pages/PlaceholderPage'
 
 function FullPageSpinner() {
@@ -40,6 +42,8 @@ export default function AppRouter() {
         <Route path="/collections/:id" element={<CollectionDetailPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />
+        <Route path="/fiches" element={<FichesPage />} />
+        <Route path="/fiches/:id" element={<FicheDetailPage />} />
         <Route path="/materials" element={
           <PlaceholderPage title="Matières" description="Gestion du catalogue matières et fournitures — disponible prochainement." />
         } />

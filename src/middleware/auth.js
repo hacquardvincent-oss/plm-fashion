@@ -4,10 +4,13 @@ const { query } = require('../../config/database');
 const authenticate = async (req, res, next) => {
   try {
     const header = req.headers.authorization;
-    if (!header || !header.startsWith('Bearer ')) {
+    // Fallback: token en query param (pour les téléchargements directs <a href>)
+    const token = (header && header.startsWith('Bearer '))
+      ? header.split(' ')[1]
+      : req.query.token ?? null;
+    if (!token) {
       return res.status(401).json({ error: 'Token manquant ou invalide' });
     }
-    const token = header.split(' ')[1];
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
     const result = await query(

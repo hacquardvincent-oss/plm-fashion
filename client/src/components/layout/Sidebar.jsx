@@ -7,20 +7,22 @@ import {
   Truck,
   Calculator,
   GitMerge,
+  BookOpen,
   FileText,
   Users,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/collections', icon: Layers, label: 'Collections' },
-  { to: '/products', icon: Package, label: 'Produits' },
-  { to: '/materials', icon: Scissors, label: 'Matières' },
-  { to: '/suppliers', icon: Truck, label: 'Fournisseurs' },
-  { to: '/costing', icon: Calculator, label: 'Costing' },
-  { to: '/workflows', icon: GitMerge, label: 'Workflows' },
-  { to: '/documents', icon: FileText, label: 'Documents' },
-  { to: '/users', icon: Users, label: 'Utilisateurs' },
+  { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/collections', icon: Layers,          label: 'Collections' },
+  { to: '/workflows',   icon: GitMerge,        label: 'Workflows' },
+  { to: '/fiches',      icon: BookOpen,        label: 'Fiches commerciales' },
+  { divider: true },
+  { to: '/materials',   icon: Scissors,        label: 'Matières' },
+  { to: '/suppliers',   icon: Truck,           label: 'Fournisseurs' },
+  { to: '/costing',     icon: Calculator,      label: 'Costing global' },
+  { to: '/documents',   icon: FileText,        label: 'Documents' },
+  { to: '/users',       icon: Users,           label: 'Utilisateurs' },
 ]
 
 export default function Sidebar() {
@@ -37,22 +39,26 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto scrollbar-thin">
-        {NAV_ITEMS.map(({ to, icon: Icon, label }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
-                isActive
-                  ? 'bg-gold/15 text-gold'
-                  : 'text-white/50 hover:text-white hover:bg-white/5'
-              }`
-            }
-          >
-            <Icon size={16} strokeWidth={1.75} />
-            {label}
-          </NavLink>
-        ))}
+        {NAV_ITEMS.map((item, i) =>
+          item.divider ? (
+            <div key={`divider-${i}`} className="my-2 border-t border-white/5" />
+          ) : (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-150 ${
+                  isActive
+                    ? 'bg-gold/15 text-gold'
+                    : 'text-white/50 hover:text-white hover:bg-white/5'
+                }`
+              }
+            >
+              <item.icon size={16} strokeWidth={1.75} />
+              {item.label}
+            </NavLink>
+          )
+        )}
       </nav>
 
       {/* Footer */}

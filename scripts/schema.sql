@@ -504,6 +504,48 @@ CREATE INDEX IF NOT EXISTS idx_audit_entity        ON audit_logs(entity_type, en
 CREATE INDEX IF NOT EXISTS idx_audit_user          ON audit_logs(user_id);
 
 -- ============================================================
+--  9. FICHES COMMERCIALES (WHOLESALE + E-COMMERCE SEO/GEO)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS product_fiches (
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product_id        UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  version           SMALLINT NOT NULL DEFAULT 1,
+  is_current        BOOLEAN NOT NULL DEFAULT TRUE,
+
+  -- Fiche wholesale
+  wholesale_title   TEXT,
+  wholesale_body    TEXT,                   -- Markdown
+
+  -- E-commerce FR (SEO/GEO)
+  seo_title_fr      VARCHAR(70),
+  meta_desc_fr      VARCHAR(160),
+  description_fr    TEXT,                   -- HTML structuré avec h2
+  keywords_fr       TEXT[],
+  faq_fr            JSONB,                  -- [{q,a}, ...]
+
+  -- E-commerce EN (GEO international)
+  seo_title_en      VARCHAR(70),
+  meta_desc_en      VARCHAR(160),
+  description_en    TEXT,
+  keywords_en       TEXT[],
+  faq_en            JSONB,
+
+  -- Données structurées schema.org
+  json_ld           JSONB,
+
+  generated_by      UUID REFERENCES users(id),
+  generated_at      TIMESTAMPTZ DEFAULT NOW(),
+  updated_by        UUID REFERENCES users(id),
+  updated_at        TIMESTAMPTZ DEFAULT NOW(),
+
+  UNIQUE (product_id, version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_fiches_product ON product_fiches(product_id);
+CREATE INDEX IF NOT EXISTS idx_fiches_current ON product_fiches(product_id) WHERE is_current = true;
+
+-- ============================================================
 --  TRIGGER : updated_at automatique
 -- ============================================================
 
