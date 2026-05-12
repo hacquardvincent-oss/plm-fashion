@@ -1,8 +1,7 @@
 const router = require('express').Router();
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
-  AlignmentType, BorderStyle, Table, TableRow, TableCell,
-  WidthType, ShadingType, convertInchesToTwip,
+  AlignmentType, BorderStyle, ShadingType, convertInchesToTwip,
 } = require('docx');
 const { query } = require('../../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
@@ -332,9 +331,6 @@ function buildWholesaleDoc(p, fiche, colors, sizes, dateStr) {
       properties: { page: { margin: { top: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1.2), right: convertInchesToTwip(1.2) } } },
       children,
     }],
-    styles: {
-      default: { document: { run: { font: 'Calibri', size: 22, color: '0f0e0c' } } },
-    },
   });
 }
 
@@ -454,9 +450,6 @@ function buildEcommerceDoc(p, fiche, dateStr) {
       properties: { page: { margin: { top: convertInchesToTwip(1), bottom: convertInchesToTwip(1), left: convertInchesToTwip(1.2), right: convertInchesToTwip(1.2) } } },
       children,
     }],
-    styles: {
-      default: { document: { run: { font: 'Calibri', size: 22, color: '0f0e0c' } } },
-    },
   });
 }
 
