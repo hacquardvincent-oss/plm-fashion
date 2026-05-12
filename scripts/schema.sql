@@ -1,74 +1,94 @@
 -- ============================================================
---  PLM Fashion & Maroquinerie — Schéma PostgreSQL complet
---  Version 1.0 | Mai 2026
---  Architecture : on-premise, PostgreSQL 15+
+--  PLM Fashion & Maroquinerie — Schéma PostgreSQL (idempotent)
+--  Version 1.1 | Mai 2026
 -- ============================================================
 
--- Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS "pg_trgm";  -- recherche full-text fuzzy
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 
 -- ============================================================
---  ÉNUMÉRATIONS
+--  ÉNUMÉRATIONS (idempotent via blocs DO)
 -- ============================================================
 
-CREATE TYPE user_role AS ENUM (
-  'admin', 'directeur_artistique', 'chef_produit',
-  'acheteur', 'qualite', 'direction', 'fournisseur'
-);
+DO $$ BEGIN
+  CREATE TYPE user_role AS ENUM (
+    'admin', 'directeur_artistique', 'chef_produit',
+    'acheteur', 'qualite', 'direction', 'fournisseur'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE product_type AS ENUM ('pret_a_porter', 'maroquinerie', 'accessoire');
+DO $$ BEGIN
+  CREATE TYPE product_type AS ENUM ('pret_a_porter', 'maroquinerie', 'accessoire');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE collection_status AS ENUM (
-  'brouillon', 'en_cours', 'validee', 'archivee'
-);
+DO $$ BEGIN
+  CREATE TYPE collection_status AS ENUM ('brouillon', 'en_cours', 'validee', 'archivee');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE product_status AS ENUM (
-  'concept', 'en_developpement', 'proto_1', 'proto_2',
-  'sms', 'valide', 'abandonne', 'archive'
-);
+DO $$ BEGIN
+  CREATE TYPE product_status AS ENUM (
+    'concept', 'en_developpement', 'proto_1', 'proto_2',
+    'sms', 'valide', 'abandonne', 'archive'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE validation_decision AS ENUM ('approuve', 'rejete', 'en_attente', 'revision');
+DO $$ BEGIN
+  CREATE TYPE validation_decision AS ENUM ('approuve', 'rejete', 'en_attente', 'revision');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE material_type AS ENUM (
-  'tissu', 'cuir', 'doublure', 'fil', 'fermeture',
-  'bouton', 'zip', 'quincaillerie', 'emballage', 'autre'
-);
+DO $$ BEGIN
+  CREATE TYPE material_type AS ENUM (
+    'tissu', 'cuir', 'doublure', 'fil', 'fermeture',
+    'bouton', 'zip', 'quincaillerie', 'emballage', 'autre'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE sample_status AS ENUM (
-  'commande', 'en_transit', 'recu', 'valide', 'rejete'
-);
+DO $$ BEGIN
+  CREATE TYPE sample_status AS ENUM ('commande', 'en_transit', 'recu', 'valide', 'rejete');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE change_type AS ENUM ('ECR', 'ECO');
-CREATE TYPE change_status AS ENUM ('ouvert', 'en_cours', 'approuve', 'rejete', 'clos');
+DO $$ BEGIN
+  CREATE TYPE change_type AS ENUM ('ECR', 'ECO');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE document_type AS ENUM (
-  'fiche_technique', 'patron', 'visuel', 'gabarit',
-  'spec_fournisseur', 'rapport_qualite', 'autre'
-);
+DO $$ BEGIN
+  CREATE TYPE change_status AS ENUM ('ouvert', 'en_cours', 'approuve', 'rejete', 'clos');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TYPE sync_direction AS ENUM ('plm_to_erp', 'erp_to_plm', 'bidirectionnel');
-CREATE TYPE sync_status AS ENUM ('en_attente', 'en_cours', 'succes', 'erreur');
+DO $$ BEGIN
+  CREATE TYPE document_type AS ENUM (
+    'fiche_technique', 'patron', 'visuel', 'gabarit',
+    'spec_fournisseur', 'rapport_qualite', 'autre'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE sync_direction AS ENUM ('plm_to_erp', 'erp_to_plm', 'bidirectionnel');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE sync_status AS ENUM ('en_attente', 'en_cours', 'succes', 'erreur');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============================================================
 --  1. UTILISATEURS & AUTHENTIFICATION
 -- ============================================================
 
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   email          VARCHAR(255) UNIQUE NOT NULL,
   password_hash  TEXT NOT NULL,
   first_name     VARCHAR(100) NOT NULL,
   last_name      VARCHAR(100) NOT NULL,
   role           user_role NOT NULL DEFAULT 'chef_produit',
-  supplier_id    UUID,                        -- FK ajoutée après création suppliers
+  supplier_id    UUID,
   is_active      BOOLEAN NOT NULL DEFAULT TRUE,
   last_login_at  TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE refresh_tokens (
+CREATE TABLE IF NOT EXISTS refresh_tokens (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   token_hash  TEXT NOT NULL UNIQUE,
@@ -77,11 +97,11 @@ CREATE TABLE refresh_tokens (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE audit_logs (
+CREATE TABLE IF NOT EXISTS audit_logs (
   id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
-  action      VARCHAR(100) NOT NULL,   -- 'CREATE', 'UPDATE', 'DELETE', 'LOGIN', etc.
-  entity_type VARCHAR(100),            -- 'product', 'collection', etc.
+  action      VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(100),
   entity_id   UUID,
   old_data    JSONB,
   new_data    JSONB,
@@ -93,7 +113,7 @@ CREATE TABLE audit_logs (
 --  2. FOURNISSEURS
 -- ============================================================
 
-CREATE TABLE suppliers (
+CREATE TABLE IF NOT EXISTS suppliers (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code             VARCHAR(30) UNIQUE NOT NULL,
   name             VARCHAR(255) NOT NULL,
@@ -104,23 +124,24 @@ CREATE TABLE suppliers (
   contact_email    VARCHAR(255),
   contact_phone    VARCHAR(50),
   currency         CHAR(3) DEFAULT 'EUR',
-  payment_terms    VARCHAR(100),              -- ex: '30 jours net'
-  lead_time_days   INTEGER,                   -- délai standard en jours
+  payment_terms    VARCHAR(100),
+  lead_time_days   INTEGER,
   quality_score    NUMERIC(3,1) CHECK (quality_score BETWEEN 0 AND 10),
-  certifications   TEXT[],                    -- ex: ['ISO9001','OEKO-TEX']
-  specialties      TEXT[],                    -- ex: ['cuir','tissu','zip']
+  certifications   TEXT[],
+  specialties      TEXT[],
   is_active        BOOLEAN NOT NULL DEFAULT TRUE,
-  erp_code         VARCHAR(100),              -- code dans Cegid/Sage
+  erp_code         VARCHAR(100),
   notes            TEXT,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Liaison users ↔ suppliers (accès portail fournisseur)
-ALTER TABLE users ADD CONSTRAINT fk_users_supplier
-  FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL;
+DO $$ BEGIN
+  ALTER TABLE users ADD CONSTRAINT fk_users_supplier
+    FOREIGN KEY (supplier_id) REFERENCES suppliers(id) ON DELETE SET NULL;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE TABLE supplier_evaluations (
+CREATE TABLE IF NOT EXISTS supplier_evaluations (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   supplier_id   UUID NOT NULL REFERENCES suppliers(id) ON DELETE CASCADE,
   evaluated_by  UUID NOT NULL REFERENCES users(id),
@@ -136,17 +157,17 @@ CREATE TABLE supplier_evaluations (
 --  3. COLLECTIONS
 -- ============================================================
 
-CREATE TABLE collections (
+CREATE TABLE IF NOT EXISTS collections (
   id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  code          VARCHAR(20) UNIQUE NOT NULL,   -- ex: 'SS2026', 'AW2025'
+  code          VARCHAR(20) UNIQUE NOT NULL,
   name          VARCHAR(255) NOT NULL,
-  season        VARCHAR(50),                   -- 'Printemps-Été', 'Automne-Hiver', 'Capsule'
+  season        VARCHAR(50),
   year          SMALLINT NOT NULL,
   status        collection_status NOT NULL DEFAULT 'brouillon',
-  target_refs   INTEGER,                       -- nombre de références cible
+  target_refs   INTEGER,
   budget        NUMERIC(12,2),
   description   TEXT,
-  brief_url     TEXT,                          -- lien vers brief créatif
+  brief_url     TEXT,
   delivery_date DATE,
   showroom_date DATE,
   created_by    UUID NOT NULL REFERENCES users(id),
@@ -154,10 +175,10 @@ CREATE TABLE collections (
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE collection_milestones (
+CREATE TABLE IF NOT EXISTS collection_milestones (
   id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   collection_id  UUID NOT NULL REFERENCES collections(id) ON DELETE CASCADE,
-  name           VARCHAR(200) NOT NULL,        -- ex: 'Remise maquettes', 'Proto 1'
+  name           VARCHAR(200) NOT NULL,
   due_date       DATE NOT NULL,
   completed_at   TIMESTAMPTZ,
   responsible_id UUID REFERENCES users(id),
@@ -168,17 +189,17 @@ CREATE TABLE collection_milestones (
 --  4. MATIÈRES
 -- ============================================================
 
-CREATE TABLE materials (
+CREATE TABLE IF NOT EXISTS materials (
   id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   code              VARCHAR(50) UNIQUE NOT NULL,
   name              VARCHAR(255) NOT NULL,
   type              material_type NOT NULL,
-  composition       VARCHAR(255),              -- ex: '80% coton 20% polyester'
-  width_cm          NUMERIC(6,2),              -- pour les tissus (en cm)
-  weight_gsm        NUMERIC(6,2),              -- grammes/m²
-  color_reference   VARCHAR(100),              -- référence Pantone/NCS
+  composition       VARCHAR(255),
+  width_cm          NUMERIC(6,2),
+  weight_gsm        NUMERIC(6,2),
+  color_reference   VARCHAR(100),
   color_name        VARCHAR(100),
-  unit              VARCHAR(20) DEFAULT 'ml',  -- ml, kg, pièce, etc.
+  unit              VARCHAR(20) DEFAULT 'ml',
   min_order_qty     NUMERIC(10,2),
   price_per_unit    NUMERIC(10,4),
   currency          CHAR(3) DEFAULT 'EUR',
@@ -193,7 +214,7 @@ CREATE TABLE materials (
   updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE material_samples (
+CREATE TABLE IF NOT EXISTS material_samples (
   id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   material_id  UUID NOT NULL REFERENCES materials(id) ON DELETE CASCADE,
   requested_by UUID NOT NULL REFERENCES users(id),
@@ -212,38 +233,37 @@ CREATE TABLE material_samples (
 --  5. PRODUITS / FICHES TECHNIQUES
 -- ============================================================
 
-CREATE TABLE products (
+CREATE TABLE IF NOT EXISTS products (
   id               UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  reference        VARCHAR(50) UNIQUE NOT NULL,     -- ex: 'SS26-PAP-001'
+  reference        VARCHAR(50) UNIQUE NOT NULL,
   name             VARCHAR(255) NOT NULL,
   type             product_type NOT NULL,
   collection_id    UUID NOT NULL REFERENCES collections(id),
-  family           VARCHAR(100),                    -- ex: 'Vestes', 'Sacs à main'
+  family           VARCHAR(100),
   sub_family       VARCHAR(100),
   status           product_status NOT NULL DEFAULT 'concept',
-  gender           VARCHAR(20),                     -- 'femme', 'homme', 'mixte'
+  gender           VARCHAR(20),
   description      TEXT,
   style_notes      TEXT,
   target_retail_price NUMERIC(10,2),
-  target_cost      NUMERIC(10,2),                   -- coût cible
-  target_margin    NUMERIC(5,2),                    -- marge cible en %
+  target_cost      NUMERIC(10,2),
+  target_margin    NUMERIC(5,2),
   main_supplier_id UUID REFERENCES suppliers(id),
-  erp_article_code VARCHAR(100),                    -- code dans Cegid/Sage
+  erp_article_code VARCHAR(100),
   created_by       UUID NOT NULL REFERENCES users(id),
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Variantes (coloris × taille × matière)
-CREATE TABLE product_variants (
+CREATE TABLE IF NOT EXISTS product_variants (
   id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id     UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   sku            VARCHAR(100) UNIQUE NOT NULL,
   color_name     VARCHAR(100),
-  color_ref      VARCHAR(50),                   -- Pantone/NCS
-  size           VARCHAR(20),                   -- 'XS','S','M','L','XL' ou '36','38'...
-  size_system    VARCHAR(20) DEFAULT 'FR',       -- 'FR','IT','US'
-  material_ref   VARCHAR(100),                  -- variante de matière principale
+  color_ref      VARCHAR(50),
+  size           VARCHAR(20),
+  size_system    VARCHAR(20) DEFAULT 'FR',
+  material_ref   VARCHAR(100),
   barcode        VARCHAR(50),
   is_active      BOOLEAN NOT NULL DEFAULT TRUE,
   erp_sku        VARCHAR(100),
@@ -251,26 +271,24 @@ CREATE TABLE product_variants (
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Tableau de tailles / gradation
-CREATE TABLE size_grading (
+CREATE TABLE IF NOT EXISTS size_grading (
   id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id   UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   size         VARCHAR(20) NOT NULL,
-  measurement  VARCHAR(100) NOT NULL,   -- ex: 'Tour de poitrine', 'Longueur dos'
+  measurement  VARCHAR(100) NOT NULL,
   value_cm     NUMERIC(6,2) NOT NULL,
-  tolerance    NUMERIC(4,2),            -- tolérance ±
+  tolerance    NUMERIC(4,2),
   UNIQUE (product_id, size, measurement)
 );
 
--- Nomenclature matières (BOM)
-CREATE TABLE product_bom (
+CREATE TABLE IF NOT EXISTS product_bom (
   id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id      UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   material_id     UUID NOT NULL REFERENCES materials(id),
-  usage_type      VARCHAR(100),          -- ex: 'Corps principal', 'Doublure', 'Fermeture'
+  usage_type      VARCHAR(100),
   quantity        NUMERIC(10,4) NOT NULL,
-  unit            VARCHAR(20) NOT NULL,   -- 'ml', 'kg', 'pièce'
-  waste_factor    NUMERIC(5,4) DEFAULT 0.05, -- 5% de perte par défaut
+  unit            VARCHAR(20) NOT NULL,
+  waste_factor    NUMERIC(5,4) DEFAULT 0.05,
   notes           TEXT,
   UNIQUE (product_id, material_id, usage_type)
 );
@@ -279,27 +297,20 @@ CREATE TABLE product_bom (
 --  6. COSTING
 -- ============================================================
 
-CREATE TABLE product_costings (
+CREATE TABLE IF NOT EXISTS product_costings (
   id                  UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   product_id          UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   version             SMALLINT NOT NULL DEFAULT 1,
   is_current          BOOLEAN NOT NULL DEFAULT TRUE,
-  -- Matières
   materials_cost      NUMERIC(10,4) DEFAULT 0,
-  -- Façon / CMT (Cut, Make, Trim)
   cmt_cost            NUMERIC(10,4) DEFAULT 0,
-  -- Accessoires (étiquettes, hangers, emballage)
   accessories_cost    NUMERIC(10,4) DEFAULT 0,
-  -- Transport & logistique
   transport_cost      NUMERIC(10,4) DEFAULT 0,
-  -- Droits de douane
   customs_cost        NUMERIC(10,4) DEFAULT 0,
-  -- Coût total calculé (mis à jour par trigger)
   total_cost          NUMERIC(10,4) DEFAULT 0,
   currency            CHAR(3) DEFAULT 'EUR',
-  -- Prix de vente et marges
-  wholesale_price     NUMERIC(10,2),              -- prix gros
-  retail_price        NUMERIC(10,2),              -- prix détail
+  wholesale_price     NUMERIC(10,2),
+  retail_price        NUMERIC(10,2),
   gross_margin_pct    NUMERIC(6,3) DEFAULT 0,
   coefficient         NUMERIC(6,3) DEFAULT 0,
   notes               TEXT,
@@ -308,11 +319,10 @@ CREATE TABLE product_costings (
   UNIQUE (product_id, version)
 );
 
--- Détail des lignes de costing
-CREATE TABLE costing_lines (
+CREATE TABLE IF NOT EXISTS costing_lines (
   id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   costing_id     UUID NOT NULL REFERENCES product_costings(id) ON DELETE CASCADE,
-  category       VARCHAR(100) NOT NULL,       -- 'matiere', 'cmt', 'accessoire', 'transport'
+  category       VARCHAR(100) NOT NULL,
   label          VARCHAR(255) NOT NULL,
   quantity       NUMERIC(10,4),
   unit_price     NUMERIC(10,4),
@@ -322,7 +332,208 @@ CREATE TABLE costing_lines (
   notes          TEXT
 );
 
--- Trigger : recalcul automatique de total_cost, gross_margin_pct et coefficient
+-- ============================================================
+--  7. WORKFLOWS DE VALIDATION
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS validation_workflows (
+  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product_id     UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  stage          product_status NOT NULL,
+  requested_by   UUID NOT NULL REFERENCES users(id),
+  requested_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  due_date       TIMESTAMPTZ,
+  decision       validation_decision NOT NULL DEFAULT 'en_attente',
+  decided_by     UUID REFERENCES users(id),
+  decided_at     TIMESTAMPTZ,
+  comments       TEXT,
+  next_stage     product_status
+);
+
+CREATE TABLE IF NOT EXISTS validation_comments (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  workflow_id     UUID NOT NULL REFERENCES validation_workflows(id) ON DELETE CASCADE,
+  user_id         UUID NOT NULL REFERENCES users(id),
+  comment         TEXT NOT NULL,
+  is_blocking     BOOLEAN DEFAULT FALSE,
+  zone            VARCHAR(100),
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+--  8. CHANGE MANAGEMENT (ECR / ECO)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS change_requests (
+  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  type           change_type NOT NULL DEFAULT 'ECR',
+  reference      VARCHAR(50) UNIQUE NOT NULL,
+  product_id     UUID NOT NULL REFERENCES products(id),
+  title          VARCHAR(255) NOT NULL,
+  description    TEXT NOT NULL,
+  reason         VARCHAR(255),
+  impact         TEXT,
+  status         change_status NOT NULL DEFAULT 'ouvert',
+  priority       SMALLINT DEFAULT 2 CHECK (priority BETWEEN 1 AND 3),
+  requested_by   UUID NOT NULL REFERENCES users(id),
+  assigned_to    UUID REFERENCES users(id),
+  approved_by    UUID REFERENCES users(id),
+  approved_at    TIMESTAMPTZ,
+  implemented_at TIMESTAMPTZ,
+  due_date       DATE,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+--  9. GESTION DOCUMENTAIRE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS documents (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  entity_type     VARCHAR(50) NOT NULL,
+  entity_id       UUID NOT NULL,
+  type            document_type NOT NULL,
+  name            VARCHAR(255) NOT NULL,
+  filename        VARCHAR(255) NOT NULL,
+  storage_path    TEXT NOT NULL,
+  mime_type       VARCHAR(100),
+  file_size_bytes BIGINT,
+  version         SMALLINT NOT NULL DEFAULT 1,
+  is_current      BOOLEAN NOT NULL DEFAULT TRUE,
+  is_public       BOOLEAN NOT NULL DEFAULT FALSE,
+  checksum        VARCHAR(64),
+  uploaded_by     UUID NOT NULL REFERENCES users(id),
+  uploaded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  notes           TEXT
+);
+
+CREATE INDEX IF NOT EXISTS idx_documents_entity  ON documents(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_documents_current ON documents(entity_type, entity_id) WHERE is_current = TRUE;
+
+-- ============================================================
+--  10. PORTAIL FOURNISSEURS — MESSAGERIE
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS supplier_messages (
+  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  entity_type    VARCHAR(50) NOT NULL,
+  entity_id      UUID NOT NULL,
+  thread_id      UUID,
+  from_user_id   UUID NOT NULL REFERENCES users(id),
+  to_supplier_id UUID REFERENCES suppliers(id),
+  subject        VARCHAR(255),
+  body           TEXT NOT NULL,
+  is_read        BOOLEAN DEFAULT FALSE,
+  read_at        TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+--  11. INTÉGRATION ERP
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS erp_sync_logs (
+  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  entity_type     VARCHAR(50) NOT NULL,
+  entity_id       UUID,
+  direction       sync_direction NOT NULL,
+  status          sync_status NOT NULL DEFAULT 'en_attente',
+  erp_system      VARCHAR(50) NOT NULL,
+  payload         JSONB,
+  response        JSONB,
+  error_message   TEXT,
+  started_at      TIMESTAMPTZ,
+  completed_at    TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS erp_mappings (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  entity_type   VARCHAR(50) NOT NULL,
+  plm_id        UUID NOT NULL,
+  erp_system    VARCHAR(50) NOT NULL,
+  erp_code      VARCHAR(100) NOT NULL,
+  last_synced   TIMESTAMPTZ,
+  UNIQUE (entity_type, plm_id, erp_system)
+);
+
+-- ============================================================
+--  12. NOTIFICATIONS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type         VARCHAR(100) NOT NULL,
+  title        VARCHAR(255) NOT NULL,
+  body         TEXT,
+  entity_type  VARCHAR(50),
+  entity_id    UUID,
+  is_read      BOOLEAN NOT NULL DEFAULT FALSE,
+  read_at      TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id) WHERE is_read = FALSE;
+
+-- ============================================================
+--  INDEXES PRINCIPAUX
+-- ============================================================
+
+CREATE INDEX IF NOT EXISTS idx_products_collection ON products(collection_id);
+CREATE INDEX IF NOT EXISTS idx_products_status     ON products(status);
+CREATE INDEX IF NOT EXISTS idx_products_reference  ON products(reference);
+CREATE INDEX IF NOT EXISTS idx_products_erp        ON products(erp_article_code) WHERE erp_article_code IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_variants_product    ON product_variants(product_id);
+CREATE INDEX IF NOT EXISTS idx_bom_product         ON product_bom(product_id);
+CREATE INDEX IF NOT EXISTS idx_bom_material        ON product_bom(material_id);
+
+CREATE INDEX IF NOT EXISTS idx_workflows_product   ON validation_workflows(product_id);
+CREATE INDEX IF NOT EXISTS idx_workflows_pending   ON validation_workflows(product_id) WHERE decision = 'en_attente';
+
+CREATE INDEX IF NOT EXISTS idx_ecr_product         ON change_requests(product_id);
+CREATE INDEX IF NOT EXISTS idx_ecr_status          ON change_requests(status);
+
+CREATE INDEX IF NOT EXISTS idx_materials_supplier  ON materials(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_materials_name_trgm ON materials USING gin(name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_products_name_trgm  ON products USING gin(name gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS idx_audit_entity        ON audit_logs(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_user          ON audit_logs(user_id);
+
+-- ============================================================
+--  TRIGGER : updated_at automatique
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
+$$ LANGUAGE plpgsql;
+
+DO $$
+DECLARE tbl TEXT;
+BEGIN
+  FOREACH tbl IN ARRAY ARRAY[
+    'users','suppliers','collections','materials',
+    'products','change_requests'
+  ] LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS trg_%s_updated_at ON %s', tbl, tbl);
+    EXECUTE format(
+      'CREATE TRIGGER trg_%s_updated_at
+       BEFORE UPDATE ON %s
+       FOR EACH ROW EXECUTE FUNCTION update_updated_at()',
+      tbl, tbl
+    );
+  END LOOP;
+END;
+$$;
+
+-- ============================================================
+--  TRIGGER : calcul costing (total_cost, gross_margin_pct, coefficient)
+-- ============================================================
+
 CREATE OR REPLACE FUNCTION calc_costing_fields()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -349,213 +560,18 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_product_costings_calc ON product_costings;
 CREATE TRIGGER trg_product_costings_calc
   BEFORE INSERT OR UPDATE ON product_costings
   FOR EACH ROW EXECUTE FUNCTION calc_costing_fields();
-
--- ============================================================
---  7. WORKFLOWS DE VALIDATION
--- ============================================================
-
-CREATE TABLE validation_workflows (
-  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  product_id     UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-  stage          product_status NOT NULL,      -- étape du cycle de vie
-  requested_by   UUID NOT NULL REFERENCES users(id),
-  requested_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  due_date       TIMESTAMPTZ,
-  decision       validation_decision NOT NULL DEFAULT 'en_attente',
-  decided_by     UUID REFERENCES users(id),
-  decided_at     TIMESTAMPTZ,
-  comments       TEXT,
-  next_stage     product_status                -- étape suivante si approuvé
-);
-
-CREATE TABLE validation_comments (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  workflow_id     UUID NOT NULL REFERENCES validation_workflows(id) ON DELETE CASCADE,
-  user_id         UUID NOT NULL REFERENCES users(id),
-  comment         TEXT NOT NULL,
-  is_blocking     BOOLEAN DEFAULT FALSE,       -- commentaire bloquant ou informatif
-  zone            VARCHAR(100),                -- zone du produit concernée (ex: 'col', 'fermeture')
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- ============================================================
---  8. CHANGE MANAGEMENT (ECR / ECO)
--- ============================================================
-
-CREATE TABLE change_requests (
-  id             UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  type           change_type NOT NULL DEFAULT 'ECR',
-  reference      VARCHAR(50) UNIQUE NOT NULL,  -- ex: 'ECR-2026-0042'
-  product_id     UUID NOT NULL REFERENCES products(id),
-  title          VARCHAR(255) NOT NULL,
-  description    TEXT NOT NULL,
-  reason         VARCHAR(255),                 -- ex: 'Qualité', 'Coût', 'Design'
-  impact         TEXT,                         -- impact estimé
-  status         change_status NOT NULL DEFAULT 'ouvert',
-  priority       SMALLINT DEFAULT 2 CHECK (priority BETWEEN 1 AND 3), -- 1=urgent
-  requested_by   UUID NOT NULL REFERENCES users(id),
-  assigned_to    UUID REFERENCES users(id),
-  approved_by    UUID REFERENCES users(id),
-  approved_at    TIMESTAMPTZ,
-  implemented_at TIMESTAMPTZ,
-  due_date       DATE,
-  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- ============================================================
---  9. GESTION DOCUMENTAIRE
--- ============================================================
-
-CREATE TABLE documents (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  entity_type     VARCHAR(50) NOT NULL,         -- 'product', 'collection', 'material', 'supplier'
-  entity_id       UUID NOT NULL,
-  type            document_type NOT NULL,
-  name            VARCHAR(255) NOT NULL,
-  filename        VARCHAR(255) NOT NULL,
-  storage_path    TEXT NOT NULL,                -- chemin MinIO : bucket/path/file
-  mime_type       VARCHAR(100),
-  file_size_bytes BIGINT,
-  version         SMALLINT NOT NULL DEFAULT 1,
-  is_current      BOOLEAN NOT NULL DEFAULT TRUE,
-  is_public       BOOLEAN NOT NULL DEFAULT FALSE, -- visible fournisseur ?
-  checksum        VARCHAR(64),                  -- SHA-256
-  uploaded_by     UUID NOT NULL REFERENCES users(id),
-  uploaded_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  notes           TEXT
-);
-
-CREATE INDEX idx_documents_entity ON documents(entity_type, entity_id);
-CREATE INDEX idx_documents_current ON documents(entity_type, entity_id) WHERE is_current = TRUE;
-
--- ============================================================
---  10. PORTAIL FOURNISSEURS — MESSAGERIE
--- ============================================================
-
-CREATE TABLE supplier_messages (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  entity_type   VARCHAR(50) NOT NULL,    -- 'product', 'material', 'sample'
-  entity_id     UUID NOT NULL,
-  thread_id     UUID,                    -- regroupement de messages
-  from_user_id  UUID NOT NULL REFERENCES users(id),
-  to_supplier_id UUID REFERENCES suppliers(id),
-  subject       VARCHAR(255),
-  body          TEXT NOT NULL,
-  is_read       BOOLEAN DEFAULT FALSE,
-  read_at       TIMESTAMPTZ,
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
--- ============================================================
---  11. INTÉGRATION ERP
--- ============================================================
-
-CREATE TABLE erp_sync_logs (
-  id              UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  entity_type     VARCHAR(50) NOT NULL,   -- 'product', 'supplier', 'price'
-  entity_id       UUID,
-  direction       sync_direction NOT NULL,
-  status          sync_status NOT NULL DEFAULT 'en_attente',
-  erp_system      VARCHAR(50) NOT NULL,   -- 'cegid', 'sage'
-  payload         JSONB,                  -- données envoyées/reçues
-  response        JSONB,
-  error_message   TEXT,
-  started_at      TIMESTAMPTZ,
-  completed_at    TIMESTAMPTZ,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE TABLE erp_mappings (
-  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  entity_type   VARCHAR(50) NOT NULL,
-  plm_id        UUID NOT NULL,
-  erp_system    VARCHAR(50) NOT NULL,
-  erp_code      VARCHAR(100) NOT NULL,
-  last_synced   TIMESTAMPTZ,
-  UNIQUE (entity_type, plm_id, erp_system)
-);
-
--- ============================================================
---  12. NOTIFICATIONS
--- ============================================================
-
-CREATE TABLE notifications (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id      UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  type         VARCHAR(100) NOT NULL,      -- 'validation_request', 'proto_approved', etc.
-  title        VARCHAR(255) NOT NULL,
-  body         TEXT,
-  entity_type  VARCHAR(50),
-  entity_id    UUID,
-  is_read      BOOLEAN NOT NULL DEFAULT FALSE,
-  read_at      TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-
-CREATE INDEX idx_notifications_user_unread ON notifications(user_id) WHERE is_read = FALSE;
-
--- ============================================================
---  INDEXES PRINCIPAUX
--- ============================================================
-
-CREATE INDEX idx_products_collection   ON products(collection_id);
-CREATE INDEX idx_products_status       ON products(status);
-CREATE INDEX idx_products_reference    ON products(reference);
-CREATE INDEX idx_products_erp          ON products(erp_article_code) WHERE erp_article_code IS NOT NULL;
-
-CREATE INDEX idx_variants_product      ON product_variants(product_id);
-CREATE INDEX idx_bom_product           ON product_bom(product_id);
-CREATE INDEX idx_bom_material          ON product_bom(material_id);
-
-CREATE INDEX idx_workflows_product     ON validation_workflows(product_id);
-CREATE INDEX idx_workflows_pending     ON validation_workflows(product_id) WHERE decision = 'en_attente';
-
-CREATE INDEX idx_ecr_product           ON change_requests(product_id);
-CREATE INDEX idx_ecr_status            ON change_requests(status);
-
-CREATE INDEX idx_materials_supplier    ON materials(supplier_id);
-CREATE INDEX idx_materials_name_trgm   ON materials USING gin(name gin_trgm_ops);
-CREATE INDEX idx_products_name_trgm    ON products USING gin(name gin_trgm_ops);
-
-CREATE INDEX idx_audit_entity          ON audit_logs(entity_type, entity_id);
-CREATE INDEX idx_audit_user            ON audit_logs(user_id);
-
--- ============================================================
---  TRIGGER : updated_at automatique
--- ============================================================
-
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN NEW.updated_at = NOW(); RETURN NEW; END;
-$$ LANGUAGE plpgsql;
-
-DO $$
-DECLARE tbl TEXT;
-BEGIN
-  FOREACH tbl IN ARRAY ARRAY[
-    'users','suppliers','collections','materials',
-    'products','change_requests'
-  ] LOOP
-    EXECUTE format(
-      'CREATE TRIGGER trg_%s_updated_at
-       BEFORE UPDATE ON %s
-       FOR EACH ROW EXECUTE FUNCTION update_updated_at()',
-      tbl, tbl
-    );
-  END LOOP;
-END;
-$$;
 
 -- ============================================================
 --  DONNÉES DE RÉFÉRENCE INITIALES
 -- ============================================================
 
 INSERT INTO users (email, password_hash, first_name, last_name, role) VALUES
-  ('admin@plm.local', '$2b$12$placeholder_change_me', 'Admin', 'PLM', 'admin');
+  ('admin@plm.local', '$2b$12$placeholder_change_me', 'Admin', 'PLM', 'admin')
+ON CONFLICT (email) DO NOTHING;
 
 -- ============================================================
 --  FIN DU SCHÉMA
