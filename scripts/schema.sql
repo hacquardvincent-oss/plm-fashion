@@ -294,21 +294,14 @@ CREATE TABLE product_costings (
   transport_cost      NUMERIC(10,4) DEFAULT 0,
   -- Droits de douane
   customs_cost        NUMERIC(10,4) DEFAULT 0,
-  -- Coût total calculé
-  total_cost          NUMERIC(10,4) GENERATED ALWAYS AS
-    (materials_cost + cmt_cost + accessories_cost + transport_cost + customs_cost) STORED,
+  -- Coût total calculé (mis à jour par trigger)
+  total_cost          NUMERIC(10,4) DEFAULT 0,
   currency            CHAR(3) DEFAULT 'EUR',
   -- Prix de vente et marges
   wholesale_price     NUMERIC(10,2),              -- prix gros
   retail_price        NUMERIC(10,2),              -- prix détail
-  gross_margin_pct    NUMERIC(6,3) GENERATED ALWAYS AS (
-    CASE WHEN retail_price > 0
-         THEN ROUND(((retail_price - total_cost) / retail_price) * 100, 3)
-         ELSE 0 END
-  ) STORED,
-  coefficient         NUMERIC(6,3) GENERATED ALWAYS AS (
-    CASE WHEN total_cost > 0 THEN ROUND(retail_price / total_cost, 3) ELSE 0 END
-  ) STORED,
+  gross_margin_pct    NUMERIC(6,3) DEFAULT 0,
+  coefficient         NUMERIC(6,3) DEFAULT 0,
   notes               TEXT,
   created_by          UUID NOT NULL REFERENCES users(id),
   created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -328,6 +321,37 @@ CREATE TABLE costing_lines (
   supplier_id    UUID REFERENCES suppliers(id),
   notes          TEXT
 );
+
+-- Trigger : recalcul automatique de total_cost, gross_margin_pct et coefficient
+CREATE OR REPLACE FUNCTION calc_costing_fields()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.total_cost := COALESCE(NEW.materials_cost, 0)
+                  + COALESCE(NEW.cmt_cost, 0)
+                  + COALESCE(NEW.accessories_cost, 0)
+                  + COALESCE(NEW.transport_cost, 0)
+                  + COALESCE(NEW.customs_cost, 0);
+
+  IF COALESCE(NEW.retail_price, 0) > 0 THEN
+    NEW.gross_margin_pct := ROUND(
+      ((NEW.retail_price - NEW.total_cost) / NEW.retail_price) * 100, 3);
+  ELSE
+    NEW.gross_margin_pct := 0;
+  END IF;
+
+  IF NEW.total_cost > 0 THEN
+    NEW.coefficient := ROUND(COALESCE(NEW.retail_price, 0) / NEW.total_cost, 3);
+  ELSE
+    NEW.coefficient := 0;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_product_costings_calc
+  BEFORE INSERT OR UPDATE ON product_costings
+  FOR EACH ROW EXECUTE FUNCTION calc_costing_fields();
 
 -- ============================================================
 --  7. WORKFLOWS DE VALIDATION
