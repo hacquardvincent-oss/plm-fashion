@@ -5,7 +5,11 @@ const { authenticate } = require('../middleware/auth');
 
 router.use(authenticate);
 
-const client = new Anthropic();
+const getClient = () => {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error('ANTHROPIC_API_KEY non configurée');
+  return new Anthropic({ apiKey: key });
+};
 
 // POST /api/ai/products/:id/generate-description
 router.post('/products/:id/generate-description', async (req, res) => {
@@ -83,7 +87,7 @@ Rédige EXACTEMENT ce format JSON (sans markdown, sans commentaire) :
   "ecommerce": "<description e-commerce B2C, 100-140 mots, ton inspirant et lifestyle, met en avant le style, l'usage, les détails sensoriels, donne envie d'acheter>"
 }`;
 
-    const message = await client.messages.create({
+    const message = await getClient().messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 1024,
       messages: [{ role: 'user', content: prompt }],

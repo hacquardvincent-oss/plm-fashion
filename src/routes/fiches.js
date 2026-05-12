@@ -10,7 +10,12 @@ const { authenticate, authorize } = require('../middleware/auth');
 
 router.use(authenticate);
 
-const anthropic = new Anthropic();
+// Initialisation paresseuse : évite un crash au démarrage si la clé est absente
+function getAnthropic() {
+  const key = process.env.ANTHROPIC_API_KEY;
+  if (!key) throw new Error('ANTHROPIC_API_KEY non configurée');
+  return new Anthropic({ apiKey: key });
+}
 
 // ── helpers ──────────────────────────────────────────────────
 
@@ -153,7 +158,7 @@ router.post('/:productId/generate', async (req, res) => {
     const p = await fetchProductData(req.params.productId);
     if (!p) return res.status(404).json({ error: 'Produit introuvable' });
 
-    const message = await anthropic.messages.create({
+    const message = await getAnthropic().messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 4096,
       messages: [{ role: 'user', content: buildPrompt(p) }],
@@ -210,10 +215,14 @@ router.post('/:productId/generate', async (req, res) => {
 
     res.status(201).json(saved.rows[0]);
   } catch (err) {
-    console.error('Fiche generate error:', err);
-    if (err.status === 401) return res.status(503).json({ error: 'Clé API Anthropic invalide' });
+    console.error('Fiche generate error:', err?.message ?? err);
+    if (err.message?.includes('ANTHROPIC_API_KEY')) {
+      return res.status(503).json({ error: 'Clé API Anthropic non configurée sur le serveur (variable ANTHROPIC_API_KEY manquante)' });
+    }
+    if (err.status === 401) return res.status(503).json({ error: 'Clé API Anthropic invalide ou expirée' });
     if (err.status === 429) return res.status(503).json({ error: 'Quota API Anthropic dépassé' });
-    res.status(500).json({ error: 'Erreur lors de la génération' });
+    if (err.code === '42P01') return res.status(500).json({ error: 'Table product_fiches absente — relancer la migration' });
+    res.status(500).json({ error: err.message ?? 'Erreur interne lors de la génération' });
   }
 });
 
