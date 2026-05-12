@@ -3,6 +3,7 @@ services:
     name: plm-fashion-api
     runtime: node
     plan: free
+    rootDir: .
     buildCommand: npm install
     startCommand: npm run migrate && npm start
     envVars:
@@ -20,6 +21,7 @@ services:
 
   - type: static
     name: plm-fashion
+    rootDir: client
     buildCommand: npm install --include=dev && npm run build
     staticPublishPath: dist
     envVars:
