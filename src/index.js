@@ -51,6 +51,7 @@ app.use('/api/costing',     require('./routes/costing'));
 app.use('/api/workflows',   require('./routes/workflows'));
 app.use('/api/documents',   require('./routes/documents'));
 app.use('/api/users',       require('./routes/users'));
+app.use('/api/ai',          require('./routes/ai'));
 
 // ── HEALTH CHECK ──────────────────────────────────────────────
 app.get('/health', async (req, res) => {

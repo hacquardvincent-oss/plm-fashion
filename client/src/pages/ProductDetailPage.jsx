@@ -3,10 +3,11 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Package, FileText, Calculator,
-  GitMerge, Scissors, Palette, Plus, Trash2, Pencil, Send,
+  GitMerge, Scissors, Palette, Plus, Trash2, Pencil, Send, Sparkles, Copy, Check,
 } from 'lucide-react'
 import { getProduct } from '../api/products.api'
 import { deleteBomLine } from '../api/products.api'
+import { generateProductDescription } from '../api/ai.api'
 import Badge from '../components/ui/Badge'
 import Spinner from '../components/ui/Spinner'
 import ProductFormModal from '../components/products/ProductFormModal'
@@ -28,6 +29,94 @@ const TABS = [
 
 const CAN_EDIT = ['admin', 'chef_produit', 'directeur_artistique']
 const CAN_DECIDE = ['admin', 'chef_produit', 'direction', 'qualite']
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false)
+  const copy = () => {
+    navigator.clipboard.writeText(text)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+  return (
+    <button onClick={copy} className="btn-ghost p-1.5 text-dark/30 hover:text-gold transition-colors" title="Copier">
+      {copied ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+    </button>
+  )
+}
+
+function AiDescriptionPanel({ productId }) {
+  const [result, setResult] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [edited, setEdited] = useState({ wholesale: '', ecommerce: '' })
+
+  const generate = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await generateProductDescription(productId)
+      setResult(data)
+      setEdited({ wholesale: data.wholesale, ecommerce: data.ecommerce })
+    } catch (e) {
+      setError(e?.response?.data?.error ?? 'Erreur lors de la génération')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="border border-gold/20 rounded-xl bg-gold/5 p-5 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Sparkles size={15} className="text-gold" />
+          <span className="text-sm font-medium text-dark">Génération IA de descriptifs</span>
+        </div>
+        <button onClick={generate} disabled={loading}
+          className="btn-primary text-xs py-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+          {loading ? (
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+              Génération…
+            </span>
+          ) : (
+            <span className="flex items-center gap-1.5"><Sparkles size={12} /> Générer</span>
+          )}
+        </button>
+      </div>
+
+      {error && <p className="text-xs text-red-500">{error}</p>}
+
+      {result && (
+        <div className="space-y-4">
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-medium text-dark/50 uppercase tracking-wider">Showroom / Grossiste</p>
+              <CopyButton text={edited.wholesale} />
+            </div>
+            <textarea
+              value={edited.wholesale}
+              onChange={(e) => setEdited((p) => ({ ...p, wholesale: e.target.value }))}
+              rows={4}
+              className="w-full text-sm text-dark/80 bg-white border border-dark/10 rounded-lg px-3 py-2.5 resize-none focus:outline-none focus:border-gold/50 leading-relaxed"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <p className="text-xs font-medium text-dark/50 uppercase tracking-wider">E-commerce</p>
+              <CopyButton text={edited.ecommerce} />
+            </div>
+            <textarea
+              value={edited.ecommerce}
+              onChange={(e) => setEdited((p) => ({ ...p, ecommerce: e.target.value }))}
+              rows={5}
+              className="w-full text-sm text-dark/80 bg-white border border-dark/10 rounded-lg px-3 py-2.5 resize-none focus:outline-none focus:border-gold/50 leading-relaxed"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
 
 function TabFiche({ product }) {
   const fields = [
@@ -66,6 +155,7 @@ function TabFiche({ product }) {
           </div>
         ))}
       </div>
+      <AiDescriptionPanel productId={product.id} />
     </div>
   )
 }
