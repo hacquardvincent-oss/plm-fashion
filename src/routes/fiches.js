@@ -1,5 +1,4 @@
 const router = require('express').Router();
-const Anthropic = require('@anthropic-ai/sdk');
 const {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
   AlignmentType, BorderStyle, Table, TableRow, TableCell,
@@ -7,15 +6,9 @@ const {
 } = require('docx');
 const { query } = require('../../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
+const { buildFiche } = require('../services/ficheBuilder');
 
 router.use(authenticate);
-
-// Initialisation paresseuse : évite un crash au démarrage si la clé est absente
-function getAnthropic() {
-  const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) throw new Error('ANTHROPIC_API_KEY non configurée');
-  return new Anthropic({ apiKey: key });
-}
 
 // ── helpers ──────────────────────────────────────────────────
 
@@ -50,91 +43,6 @@ async function fetchProductData(productId) {
   };
 }
 
-function buildJsonLd(p) {
-  const colors = [...new Set((p.variants ?? []).map((v) => v.color_name).filter(Boolean))];
-  const sizes  = [...new Set((p.variants ?? []).map((v) => v.size).filter(Boolean))];
-  const ld = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: p.name,
-    sku: p.reference,
-    description: p.description ?? undefined,
-    brand: { '@type': 'Brand', name: 'PLM Fashion' },
-    material: (p.bom ?? []).map((b) => b.material_name).join(', ') || undefined,
-    color: colors.join(', ') || undefined,
-    size: sizes.join(', ') || undefined,
-    offers: p.costing?.retail_price ? {
-      '@type': 'Offer',
-      priceCurrency: 'EUR',
-      price: parseFloat(p.costing.retail_price).toFixed(2),
-      availability: 'https://schema.org/InStock',
-    } : undefined,
-  };
-  Object.keys(ld).forEach((k) => ld[k] === undefined && delete ld[k]);
-  return ld;
-}
-
-function buildPrompt(p) {
-  const typeLabel = { pret_a_porter: 'prêt-à-porter', maroquinerie: 'maroquinerie', accessoire: 'accessoire' }[p.type] ?? p.type;
-  const materialsLines = (p.bom ?? []).map((m) => {
-    const parts = [m.material_name];
-    if (m.usage_type) parts.push(`(${m.usage_type})`);
-    if (m.composition) parts.push(`— ${m.composition}`);
-    if (m.supplier_name) parts.push(`[${m.supplier_name}]`);
-    return parts.join(' ');
-  }).join('\n  ');
-  const colors = [...new Set((p.variants ?? []).map((v) => v.color_name).filter(Boolean))].join(', ');
-  const sizes  = [...new Set((p.variants ?? []).map((v) => v.size).filter(Boolean))].join(', ');
-  const retail = p.costing?.retail_price ? `${parseFloat(p.costing.retail_price).toFixed(2)} €` : p.target_retail_price ? `${parseFloat(p.target_retail_price).toFixed(2)} € (cible)` : 'non renseigné';
-  const wholesale = p.costing?.wholesale_price ? `${parseFloat(p.costing.wholesale_price).toFixed(2)} €` : 'non renseigné';
-
-  return `Tu es expert en rédaction mode haut de gamme, SEO et GEO (Generative Engine Optimization).
-
-## Fiche produit
-Référence : ${p.reference}
-Nom : ${p.name}
-Catégorie : ${typeLabel}
-Genre : ${p.gender ?? '—'}
-Famille : ${p.family ?? '—'}${p.sub_family ? ` / ${p.sub_family}` : ''}
-Collection : ${p.collection_name ? `${p.collection_name}${p.season ? ` ${p.season}` : ''}${p.year ? ` ${p.year}` : ''}` : '—'}
-${p.description ? `Description interne : ${p.description}` : ''}
-${p.style_notes ? `Notes de style : ${p.style_notes}` : ''}
-Matières :
-  ${materialsLines || '—'}
-Coloris : ${colors || '—'}
-Tailles : ${sizes || '—'}
-Prix public : ${retail}
-Prix grossiste : ${wholesale}
-
-## Consignes
-
-Génère exactement ce JSON (sans markdown autour, sans commentaire) :
-{
-  "wholesale_title": "titre court et professionnel pour fiche acheteur (max 80 chars)",
-  "wholesale_body": "texte wholesale en markdown : 2-3 paragraphes, ton B2B, met en avant construction, matières, positionnement. Sections : ## Description technique, ## Composition & matières, ## Points forts acheteur",
-  "seo_title_fr": "titre SEO FR max 60 chars, mot-clé principal en tête, marque en fin si possible",
-  "meta_desc_fr": "meta description FR 140-155 chars, incitative, mot-clé inclus, appel à l'action",
-  "description_fr": "description e-commerce FR en HTML simple (h2, p, ul/li uniquement) : accroche émotionnelle, description style, matières/qualité, conseils port. 200-280 mots.",
-  "keywords_fr": ["8 à 10 mots-clés FR pertinents pour la pièce, mixant génériques et spécifiques"],
-  "faq_fr": [
-    {"q": "question naturelle qu'un client FR poserait (style vocal/recherche)", "a": "réponse factuelle et complète, 2-3 phrases"},
-    {"q": "...", "a": "..."},
-    {"q": "...", "a": "..."},
-    {"q": "...", "a": "..."}
-  ],
-  "seo_title_en": "SEO title EN max 60 chars",
-  "meta_desc_en": "meta description EN 140-155 chars",
-  "description_en": "e-commerce description EN in simple HTML (h2, p, ul/li) : 200-280 words, same structure as FR",
-  "keywords_en": ["8 to 10 relevant EN keywords"],
-  "faq_en": [
-    {"q": "natural question an EN-speaking customer would ask", "a": "factual complete answer, 2-3 sentences"},
-    {"q": "...", "a": "..."},
-    {"q": "...", "a": "..."},
-    {"q": "...", "a": "..."}
-  ]
-}`;
-}
-
 // ── GET /api/fiches/:productId ────────────────────────────────
 
 router.get('/:productId', async (req, res) => {
@@ -158,22 +66,8 @@ router.post('/:productId/generate', async (req, res) => {
     const p = await fetchProductData(req.params.productId);
     if (!p) return res.status(404).json({ error: 'Produit introuvable' });
 
-    const message = await getAnthropic().messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      messages: [{ role: 'user', content: buildPrompt(p) }],
-    });
-
-    const rawText = message.content[0].text.trim();
-    let parsed;
-    try {
-      const m = rawText.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(m ? m[0] : rawText);
-    } catch {
-      return res.status(500).json({ error: 'Réponse IA non parseable', raw: rawText });
-    }
-
-    const jsonLd = buildJsonLd(p);
+    // Génération locale — aucune dépendance externe
+    const built = buildFiche(p);
 
     // Archive version précédente
     await query(
@@ -196,19 +90,19 @@ router.post('/:productId/generate', async (req, res) => {
       RETURNING *`,
       [
         req.params.productId, vRes.rows[0].next,
-        parsed.wholesale_title ?? null,
-        parsed.wholesale_body ?? null,
-        parsed.seo_title_fr ?? null,
-        parsed.meta_desc_fr ?? null,
-        parsed.description_fr ?? null,
-        parsed.keywords_fr ?? null,
-        JSON.stringify(parsed.faq_fr ?? []),
-        parsed.seo_title_en ?? null,
-        parsed.meta_desc_en ?? null,
-        parsed.description_en ?? null,
-        parsed.keywords_en ?? null,
-        JSON.stringify(parsed.faq_en ?? []),
-        JSON.stringify(jsonLd),
+        built.wholesale_title,
+        built.wholesale_body,
+        built.seo_title_fr,
+        built.meta_desc_fr,
+        built.description_fr,
+        built.keywords_fr,
+        JSON.stringify(built.faq_fr),
+        built.seo_title_en,
+        built.meta_desc_en,
+        built.description_en,
+        built.keywords_en,
+        JSON.stringify(built.faq_en),
+        JSON.stringify(built.json_ld),
         req.user.id,
       ]
     );
@@ -216,11 +110,6 @@ router.post('/:productId/generate', async (req, res) => {
     res.status(201).json(saved.rows[0]);
   } catch (err) {
     console.error('Fiche generate error:', err?.message ?? err);
-    if (err.message?.includes('ANTHROPIC_API_KEY')) {
-      return res.status(503).json({ error: 'Clé API Anthropic non configurée sur le serveur (variable ANTHROPIC_API_KEY manquante)' });
-    }
-    if (err.status === 401) return res.status(503).json({ error: 'Clé API Anthropic invalide ou expirée' });
-    if (err.status === 429) return res.status(503).json({ error: 'Quota API Anthropic dépassé' });
     if (err.code === '42P01') return res.status(500).json({ error: 'Table product_fiches absente — relancer la migration' });
     res.status(500).json({ error: err.message ?? 'Erreur interne lors de la génération' });
   }
