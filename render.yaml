@@ -15,3 +15,15 @@ services:
           name: plm-fashion-db
           property: connectionString
     healthCheckPath: /health
+
+  - type: static
+    name: plm-fashion-client
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: client/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://plm-fashion-api.onrender.com/api
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

@@ -1,0 +1,46 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cream text-dark font-sans antialiased;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 bg-gold text-white px-4 py-2.5 rounded-lg font-medium text-sm hover:bg-gold-dark active:scale-[0.98] transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 bg-white border border-dark/10 text-dark px-4 py-2.5 rounded-lg font-medium text-sm hover:border-gold/40 hover:text-gold active:scale-[0.98] transition-all duration-150 disabled:opacity-50;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 text-dark/60 px-3 py-2 rounded-lg font-medium text-sm hover:bg-dark/5 hover:text-dark active:scale-[0.98] transition-all duration-150;
+  }
+
+  .input-field {
+    @apply w-full px-3 py-2.5 bg-white border border-dark/10 rounded-lg text-sm text-dark placeholder-dark/30 focus:outline-none focus:ring-2 focus:ring-gold/20 focus:border-gold/60 transition-all duration-150;
+  }
+
+  .card {
+    @apply bg-white rounded-xl border border-dark/5 shadow-card;
+  }
+
+  .page-title {
+    @apply font-serif text-2xl text-dark;
+  }
+
+  .label {
+    @apply block text-xs font-medium text-dark/50 uppercase tracking-wider mb-1.5;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #e8d5a3 transparent;
+  }
+}
