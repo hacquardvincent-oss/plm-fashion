@@ -6,6 +6,8 @@ import DashboardPage from '../pages/DashboardPage'
 import CollectionsPage from '../pages/CollectionsPage'
 import CollectionDetailPage from '../pages/CollectionDetailPage'
 import ProductDetailPage from '../pages/ProductDetailPage'
+import WorkflowsPage from '../pages/WorkflowsPage'
+import PlaceholderPage from '../pages/PlaceholderPage'
 
 function FullPageSpinner() {
   return (
@@ -26,27 +28,33 @@ function ProtectedRoute({ children }) {
 
 export default function AppRouter() {
   const { user, loading } = useAuth()
-
   if (loading) return <FullPageSpinner />
 
   return (
     <Routes>
-      <Route
-        path="/login"
-        element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />}
-      />
+      <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <LoginPage />} />
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route
-        element={
-          <ProtectedRoute>
-            <AppLayout />
-          </ProtectedRoute>
-        }
-      >
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/collections" element={<CollectionsPage />} />
         <Route path="/collections/:id" element={<CollectionDetailPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
+        <Route path="/workflows" element={<WorkflowsPage />} />
+        <Route path="/materials" element={
+          <PlaceholderPage title="Matières" description="Gestion du catalogue matières et fournitures — disponible prochainement." />
+        } />
+        <Route path="/suppliers" element={
+          <PlaceholderPage title="Fournisseurs" description="Annuaire fournisseurs, évaluations et portail d'accès — disponible prochainement." />
+        } />
+        <Route path="/costing" element={
+          <PlaceholderPage title="Costing global" description="Vue consolidée des coûts par collection — disponible prochainement." />
+        } />
+        <Route path="/documents" element={
+          <PlaceholderPage title="Documents" description="Gestion documentaire centralisée — disponible prochainement." />
+        } />
+        <Route path="/users" element={
+          <PlaceholderPage title="Utilisateurs" description="Gestion des comptes et des rôles — disponible prochainement." />
+        } />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
