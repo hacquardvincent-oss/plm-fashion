@@ -17,7 +17,7 @@ services:
     healthCheckPath: /health
 
   - type: static
-    name: plm-fashion-client
+    name: plm-fashion
     buildCommand: cd client && npm install && npm run build
     staticPublishPath: client/dist
     envVars:
