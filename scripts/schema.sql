@@ -608,6 +608,43 @@ CREATE TRIGGER trg_product_costings_calc
   FOR EACH ROW EXECUTE FUNCTION calc_costing_fields();
 
 -- ============================================================
+--  13. FICHES TECHNIQUES STRUCTURÉES (spec sheets)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS product_spec_sheets (
+  id            UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product_id    UUID NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  version       SMALLINT NOT NULL DEFAULT 1,
+  is_current    BOOLEAN NOT NULL DEFAULT TRUE,
+  fiche_technique   JSONB NOT NULL DEFAULT '{}',
+  fcm               JSONB NOT NULL DEFAULT '[]',
+  mesures           JSONB NOT NULL DEFAULT '{}',
+  prise_mesures     JSONB NOT NULL DEFAULT '{}',
+  commentaires      JSONB NOT NULL DEFAULT '[]',
+  labelling         JSONB NOT NULL DEFAULT '{}',
+  croquis           JSONB NOT NULL DEFAULT '{}',
+  created_by    UUID REFERENCES users(id),
+  updated_by    UUID REFERENCES users(id),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (product_id, version)
+);
+
+CREATE INDEX IF NOT EXISTS idx_spec_sheets_product
+  ON product_spec_sheets(product_id);
+CREATE INDEX IF NOT EXISTS idx_spec_sheets_current
+  ON product_spec_sheets(product_id) WHERE is_current = TRUE;
+
+DO $$
+BEGIN
+  DROP TRIGGER IF EXISTS trg_product_spec_sheets_updated_at ON product_spec_sheets;
+  CREATE TRIGGER trg_product_spec_sheets_updated_at
+    BEFORE UPDATE ON product_spec_sheets
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+END;
+$$;
+
+-- ============================================================
 --  DONNÉES DE RÉFÉRENCE INITIALES
 -- ============================================================
 

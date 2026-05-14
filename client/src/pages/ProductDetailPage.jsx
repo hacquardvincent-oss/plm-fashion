@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Package, FileText, Calculator,
-  GitMerge, Scissors, Palette, Plus, Trash2, Pencil, Send,
+  GitMerge, Scissors, Palette, Plus, Trash2, Pencil, Send, ClipboardList,
 } from 'lucide-react'
 import { getProduct } from '../api/products.api'
 import { deleteBomLine } from '../api/products.api'
@@ -304,11 +304,16 @@ export default function ProductDetailPage() {
             <h2 className="font-serif text-2xl text-dark">{product.name}</h2>
             {product.collection_name && <p className="text-sm text-dark/40 mt-0.5">{product.collection_name}</p>}
           </div>
-          {CAN_EDIT.includes(user?.role) && (
-            <button onClick={() => setEditOpen(true)} className="btn-secondary shrink-0">
-              <Pencil size={14} /> Modifier
-            </button>
-          )}
+          <div className="flex gap-2 shrink-0">
+            <Link to={`/products/${id}/spec-sheet`} className="btn-secondary flex items-center gap-2">
+              <ClipboardList size={14} /> Fiche technique
+            </Link>
+            {CAN_EDIT.includes(user?.role) && (
+              <button onClick={() => setEditOpen(true)} className="btn-secondary">
+                <Pencil size={14} /> Modifier
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
