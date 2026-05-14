@@ -10,13 +10,15 @@ import {
   BookOpen,
   FileText,
   Users,
+  ClipboardList,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/collections', icon: Layers,          label: 'Collections' },
-  { to: '/workflows',   icon: GitMerge,        label: 'Workflows' },
-  { to: '/fiches',      icon: BookOpen,        label: 'Fiches commerciales' },
+  { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/collections',  icon: Layers,          label: 'Collections' },
+  { to: '/workflows',    icon: GitMerge,        label: 'Workflows' },
+  { to: '/spec-sheets',  icon: ClipboardList,   label: 'Fiches techniques' },
+  { to: '/fiches',       icon: BookOpen,        label: 'Fiches commerciales' },
   { divider: true },
   { to: '/materials',   icon: Scissors,        label: 'Matières' },
   { to: '/suppliers',   icon: Truck,           label: 'Fournisseurs' },

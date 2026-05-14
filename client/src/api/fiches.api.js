@@ -11,3 +11,6 @@ export const updateFiche      = (productId, data) =>
 
 export const exportFicheUrl   = (productId, type) =>
   `${api.defaults.baseURL}/fiches/${productId}/export/${type}`
+
+export const batchGenerateFiches = (collectionId) =>
+  api.post('/fiches/batch', { collection_id: collectionId }).then((r) => r.data)

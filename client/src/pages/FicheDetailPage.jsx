@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Download, RefreshCw, Save, Copy, Check,
-  FileText, ShoppingBag, Globe, Code2,
+  FileText, ShoppingBag, Globe, Code2, Sparkles,
 } from 'lucide-react'
 import { getProduct } from '../api/products.api'
 import { getFiche, generateFiche, updateFiche, exportFicheUrl } from '../api/fiches.api'
@@ -15,6 +15,7 @@ const TABS = [
   { id: 'wholesale', label: 'Wholesale', icon: FileText },
   { id: 'ecom_fr',   label: 'E-commerce FR', icon: ShoppingBag },
   { id: 'ecom_en',   label: 'E-commerce EN', icon: Globe },
+  { id: 'geo',       label: 'GEO', icon: Sparkles },
   { id: 'jsonld',    label: 'JSON-LD', icon: Code2 },
 ]
 
@@ -102,6 +103,97 @@ function FaqEditor({ value, onChange }) {
         </div>
       ))}
       <button onClick={add} className="btn-ghost text-xs text-dark/40 hover:text-gold">+ Ajouter une question</button>
+    </div>
+  )
+}
+
+function JsonBlock({ value }) {
+  if (!value) return <span className="text-dark/25 text-xs italic">—</span>
+  const parsed = typeof value === 'string' ? (() => { try { return JSON.parse(value) } catch { return value } })() : value
+  const str = JSON.stringify(parsed, null, 2)
+  return (
+    <div className="relative">
+      <div className="absolute top-2 right-2"><CopyBtn text={str} /></div>
+      <pre className="bg-dark/3 border border-dark/8 rounded-lg p-4 text-xs font-mono text-dark/70 overflow-x-auto whitespace-pre leading-relaxed pr-10">{str}</pre>
+    </div>
+  )
+}
+
+function TabGeo({ fields, onChange }) {
+  return (
+    <div className="space-y-8">
+      {/* Blurbs */}
+      <section>
+        <h3 className="text-xs font-semibold text-dark/40 uppercase tracking-wider mb-4">Blurb factuel (citation IA)</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {['fr', 'en'].map((l) => (
+            <div key={l}>
+              <div className="flex items-center justify-between mb-1">
+                <FieldLabel>{l === 'fr' ? 'Blurb FR' : 'Blurb EN'}</FieldLabel>
+                <CopyBtn text={fields[`geo_blurb_${l}`] ?? ''} />
+              </div>
+              <textarea
+                value={fields[`geo_blurb_${l}`] ?? ''}
+                onChange={(e) => onChange(`geo_blurb_${l}`, e.target.value)}
+                rows={4}
+                className="input-field w-full resize-none text-sm leading-relaxed"
+                placeholder={l === 'fr' ? 'Description factuelle pour moteurs IA…' : 'Factual description for AI engines…'}
+              />
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-dark/30 mt-2 leading-relaxed">
+          Ce texte est optimisé pour être cité par ChatGPT, Perplexity ou Gemini. Il doit être factuel, sans superlatif et riche en entités nommées.
+        </p>
+      </section>
+
+      {/* Alternate titles */}
+      <section>
+        <h3 className="text-xs font-semibold text-dark/40 uppercase tracking-wider mb-4">Titres alternatifs (synonymes)</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {['fr', 'en'].map((l) => (
+            <div key={l}>
+              <FieldLabel>{l === 'fr' ? 'Titres alternatifs FR' : 'Alternate titles EN'}</FieldLabel>
+              <TagList value={fields[`alternate_titles_${l}`]} onChange={(v) => onChange(`alternate_titles_${l}`, v)} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Use cases */}
+      <section>
+        <h3 className="text-xs font-semibold text-dark/40 uppercase tracking-wider mb-4">Cas d'usage / Occasions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {['fr', 'en'].map((l) => (
+            <div key={l}>
+              <FieldLabel>{l === 'fr' ? 'Cas d\'usage FR' : 'Use cases EN'}</FieldLabel>
+              <TagList value={fields[`use_cases_${l}`]} onChange={(v) => onChange(`use_cases_${l}`, v)} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Entities */}
+      <section>
+        <h3 className="text-xs font-semibold text-dark/40 uppercase tracking-wider mb-4">Entités nommées (schema.org)</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {['fr', 'en'].map((l) => (
+            <div key={l}>
+              <FieldLabel>{l === 'fr' ? 'Entités FR' : 'Entities EN'}</FieldLabel>
+              <JsonBlock value={fields[`entities_${l}`]} />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* HowTo care */}
+      <section>
+        <h3 className="text-xs font-semibold text-dark/40 uppercase tracking-wider mb-4">HowTo entretien (schema.org)</h3>
+        <JsonBlock value={fields.how_to_care_jsonld} />
+        <p className="text-xs text-dark/30 mt-2">
+          Schéma <code className="bg-dark/5 px-1 rounded">HowTo</code> généré automatiquement — à intégrer dans le JSON-LD de la page produit.
+        </p>
+      </section>
     </div>
   )
 }
@@ -215,9 +307,18 @@ export default function FicheDetailPage() {
         seo_title_en:    fiche.seo_title_en ?? '',
         meta_desc_en:    fiche.meta_desc_en ?? '',
         description_en:  fiche.description_en ?? '',
-        keywords_en:     Array.isArray(fiche.keywords_en) ? fiche.keywords_en : [],
-        faq_en:          Array.isArray(fiche.faq_en) ? fiche.faq_en : (typeof fiche.faq_en === 'string' ? JSON.parse(fiche.faq_en) : []),
-        json_ld:         fiche.json_ld ?? null,
+        keywords_en:         Array.isArray(fiche.keywords_en) ? fiche.keywords_en : [],
+        faq_en:              Array.isArray(fiche.faq_en) ? fiche.faq_en : (typeof fiche.faq_en === 'string' ? JSON.parse(fiche.faq_en) : []),
+        json_ld:             fiche.json_ld ?? null,
+        geo_blurb_fr:        fiche.geo_blurb_fr ?? '',
+        geo_blurb_en:        fiche.geo_blurb_en ?? '',
+        use_cases_fr:        Array.isArray(fiche.use_cases_fr) ? fiche.use_cases_fr : [],
+        use_cases_en:        Array.isArray(fiche.use_cases_en) ? fiche.use_cases_en : [],
+        alternate_titles_fr: Array.isArray(fiche.alternate_titles_fr) ? fiche.alternate_titles_fr : [],
+        alternate_titles_en: Array.isArray(fiche.alternate_titles_en) ? fiche.alternate_titles_en : [],
+        entities_fr:         fiche.entities_fr ?? null,
+        entities_en:         fiche.entities_en ?? null,
+        how_to_care_jsonld:  fiche.how_to_care_jsonld ?? null,
       })
       setDirty(false)
     }
@@ -339,6 +440,7 @@ export default function FicheDetailPage() {
               {tab === 'wholesale' && <TabWholesale fields={fields} onChange={onChange} />}
               {tab === 'ecom_fr'   && <TabEcom fields={fields} onChange={onChange} lang="fr" />}
               {tab === 'ecom_en'   && <TabEcom fields={fields} onChange={onChange} lang="en" />}
+              {tab === 'geo'       && <TabGeo fields={fields} onChange={onChange} />}
               {tab === 'jsonld'    && <TabJsonLd jsonLd={fields.json_ld} />}
 
               {tab !== 'jsonld' && (

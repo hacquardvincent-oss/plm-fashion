@@ -84,24 +84,24 @@ router.post('/:productId/generate', async (req, res) => {
         wholesale_title, wholesale_body,
         seo_title_fr, meta_desc_fr, description_fr, keywords_fr, faq_fr,
         seo_title_en, meta_desc_en, description_en, keywords_en, faq_en,
-        json_ld, generated_by
-      ) VALUES ($1,$2,true,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        json_ld,
+        geo_blurb_fr, use_cases_fr, alternate_titles_fr, entities_fr,
+        geo_blurb_en, use_cases_en, alternate_titles_en, entities_en,
+        how_to_care_jsonld,
+        generated_by
+      ) VALUES ($1,$2,true,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)
       RETURNING *`,
       [
         req.params.productId, vRes.rows[0].next,
-        built.wholesale_title,
-        built.wholesale_body,
-        built.seo_title_fr,
-        built.meta_desc_fr,
-        built.description_fr,
-        built.keywords_fr,
-        JSON.stringify(built.faq_fr),
-        built.seo_title_en,
-        built.meta_desc_en,
-        built.description_en,
-        built.keywords_en,
-        JSON.stringify(built.faq_en),
+        built.wholesale_title, built.wholesale_body,
+        built.seo_title_fr, built.meta_desc_fr, built.description_fr,
+        built.keywords_fr, JSON.stringify(built.faq_fr),
+        built.seo_title_en, built.meta_desc_en, built.description_en,
+        built.keywords_en, JSON.stringify(built.faq_en),
         JSON.stringify(built.json_ld),
+        built.geo_blurb_fr, built.use_cases_fr, built.alternate_titles_fr, JSON.stringify(built.entities_fr),
+        built.geo_blurb_en, built.use_cases_en, built.alternate_titles_en, JSON.stringify(built.entities_en),
+        JSON.stringify(built.how_to_care_jsonld),
         req.user.id,
       ]
     );
@@ -114,6 +114,69 @@ router.post('/:productId/generate', async (req, res) => {
   }
 });
 
+// ── POST /api/fiches/batch — génération en masse par collection ──
+router.post('/batch', async (req, res) => {
+  const { collection_id } = req.body;
+  if (!collection_id) return res.status(400).json({ error: 'collection_id requis' });
+
+  try {
+    const products = await query(
+      `SELECT id FROM products WHERE collection_id = $1 AND status NOT IN ('abandonne','archive')`,
+      [collection_id]
+    );
+    if (!products.rows.length) return res.json({ generated: 0, results: [] });
+
+    const results = [];
+    for (const { id: productId } of products.rows) {
+      try {
+        const p = await fetchProductData(productId);
+        if (!p) { results.push({ productId, status: 'error', error: 'Produit introuvable' }); continue; }
+
+        const built = buildFiche(p);
+        await query(`UPDATE product_fiches SET is_current = false WHERE product_id = $1`, [productId]);
+        const vRes = await query(
+          `SELECT COALESCE(MAX(version), 0) + 1 AS next FROM product_fiches WHERE product_id = $1`, [productId]
+        );
+        await query(`
+          INSERT INTO product_fiches (
+            product_id, version, is_current,
+            wholesale_title, wholesale_body,
+            seo_title_fr, meta_desc_fr, description_fr, keywords_fr, faq_fr,
+            seo_title_en, meta_desc_en, description_en, keywords_en, faq_en,
+            json_ld,
+            geo_blurb_fr, use_cases_fr, alternate_titles_fr, entities_fr,
+            geo_blurb_en, use_cases_en, alternate_titles_en, entities_en,
+            how_to_care_jsonld,
+            generated_by
+          ) VALUES ($1,$2,true,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25)`,
+          [
+            productId, vRes.rows[0].next,
+            built.wholesale_title, built.wholesale_body,
+            built.seo_title_fr, built.meta_desc_fr, built.description_fr,
+            built.keywords_fr, JSON.stringify(built.faq_fr),
+            built.seo_title_en, built.meta_desc_en, built.description_en,
+            built.keywords_en, JSON.stringify(built.faq_en),
+            JSON.stringify(built.json_ld),
+            built.geo_blurb_fr, built.use_cases_fr, built.alternate_titles_fr, JSON.stringify(built.entities_fr),
+            built.geo_blurb_en, built.use_cases_en, built.alternate_titles_en, JSON.stringify(built.entities_en),
+            JSON.stringify(built.how_to_care_jsonld),
+            req.user.id,
+          ]
+        );
+        results.push({ productId, productName: p.name, status: 'ok', version: vRes.rows[0].next });
+      } catch (err) {
+        results.push({ productId, status: 'error', error: err.message });
+      }
+    }
+
+    const ok = results.filter(r => r.status === 'ok').length;
+    res.json({ generated: ok, total: products.rows.length, results });
+  } catch (err) {
+    console.error('Batch generate error:', err);
+    res.status(500).json({ error: 'Erreur lors de la génération en masse' });
+  }
+});
+
 // ── PATCH /api/fiches/:productId ─────────────────────────────
 
 router.patch('/:productId', async (req, res) => {
@@ -122,12 +185,16 @@ router.patch('/:productId', async (req, res) => {
       'wholesale_title','wholesale_body',
       'seo_title_fr','meta_desc_fr','description_fr','keywords_fr','faq_fr',
       'seo_title_en','meta_desc_en','description_en','keywords_en','faq_en',
+      'geo_blurb_fr','use_cases_fr','alternate_titles_fr','entities_fr',
+      'geo_blurb_en','use_cases_en','alternate_titles_en','entities_en',
+      'how_to_care_jsonld',
     ];
+    const jsonFields = new Set(['faq_fr','faq_en','entities_fr','entities_en','how_to_care_jsonld']);
     const sets = [];
     const vals = [];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
-        vals.push(key === 'faq_fr' || key === 'faq_en' ? JSON.stringify(req.body[key]) : req.body[key]);
+        vals.push(jsonFields.has(key) ? JSON.stringify(req.body[key]) : req.body[key]);
         sets.push(`${key} = $${vals.length}`);
       }
     }

@@ -531,8 +531,23 @@ CREATE TABLE IF NOT EXISTS product_fiches (
   keywords_en       TEXT[],
   faq_en            JSONB,
 
-  -- Données structurées schema.org
+  -- Données structurées schema.org (Product @graph avec HowTo + BreadcrumbList)
   json_ld           JSONB,
+
+  -- GEO — Generative Engine Optimization (FR)
+  geo_blurb_fr         TEXT,           -- 2-3 phrases factuelles citables par IA
+  use_cases_fr         TEXT[],         -- occasions / usages FR
+  alternate_titles_fr  TEXT[],         -- synonymes et noms alternatifs FR
+  entities_fr          JSONB,          -- entités nommées structurées FR
+
+  -- GEO — Generative Engine Optimization (EN)
+  geo_blurb_en         TEXT,
+  use_cases_en         TEXT[],
+  alternate_titles_en  TEXT[],
+  entities_en          JSONB,
+
+  -- HowTo entretien (schema.org)
+  how_to_care_jsonld   JSONB,
 
   generated_by      UUID REFERENCES users(id),
   generated_at      TIMESTAMPTZ DEFAULT NOW(),
@@ -643,6 +658,17 @@ BEGIN
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 END;
 $$;
+
+-- Ajout idempotent des colonnes GEO sur base existante
+DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN geo_blurb_fr        TEXT;           EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN use_cases_fr         TEXT[];         EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN alternate_titles_fr  TEXT[];         EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN entities_fr          JSONB;          EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN geo_blurb_en         TEXT;           EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN use_cases_en         TEXT[];         EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN alternate_titles_en  TEXT[];         EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN entities_en          JSONB;          EXCEPTION WHEN duplicate_column THEN NULL; END $$;
+DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN how_to_care_jsonld   JSONB;          EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 
 -- ============================================================
 --  DONNÉES DE RÉFÉRENCE INITIALES

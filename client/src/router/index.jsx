@@ -11,6 +11,7 @@ import FichesPage from '../pages/FichesPage'
 import FicheDetailPage from '../pages/FicheDetailPage'
 import PlaceholderPage from '../pages/PlaceholderPage'
 import SpecSheetPage from '../pages/SpecSheetPage'
+import SpecSheetsListPage from '../pages/SpecSheetsListPage'
 
 function FullPageSpinner() {
   return (
@@ -43,6 +44,7 @@ export default function AppRouter() {
         <Route path="/collections/:id" element={<CollectionDetailPage />} />
         <Route path="/products/:id" element={<ProductDetailPage />} />
         <Route path="/products/:id/spec-sheet" element={<SpecSheetPage />} />
+        <Route path="/spec-sheets" element={<SpecSheetsListPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />
         <Route path="/fiches" element={<FichesPage />} />
         <Route path="/fiches/:id" element={<FicheDetailPage />} />
