@@ -1,30 +1,23 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard,
-  Layers,
-  Package,
-  Scissors,
-  Truck,
-  Calculator,
-  GitMerge,
-  BookOpen,
-  FileText,
-  Users,
-  ClipboardList,
+  LayoutDashboard, Layers, Package, Scissors, Truck,
+  Calculator, GitMerge, BookOpen, FileText, Users,
+  ClipboardList, ShoppingCart,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
-  { to: '/dashboard',    icon: LayoutDashboard, label: 'Dashboard' },
-  { to: '/collections',  icon: Layers,          label: 'Collections' },
-  { to: '/workflows',    icon: GitMerge,        label: 'Workflows' },
-  { to: '/spec-sheets',  icon: ClipboardList,   label: 'Fiches techniques' },
-  { to: '/fiches',       icon: BookOpen,        label: 'Fiches commerciales' },
+  { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/collections', icon: Layers,          label: 'Collections' },
+  { to: '/workflows',   icon: GitMerge,        label: 'Workflows' },
+  { to: '/spec-sheets', icon: ClipboardList,   label: 'Fiches techniques' },
+  { to: '/fiches',      icon: BookOpen,        label: 'Fiches commerciales' },
   { divider: true },
-  { to: '/materials',   icon: Scissors,        label: 'Matières' },
-  { to: '/suppliers',   icon: Truck,           label: 'Fournisseurs' },
-  { to: '/costing',     icon: Calculator,      label: 'Costing global' },
-  { to: '/documents',   icon: FileText,        label: 'Documents' },
-  { to: '/users',       icon: Users,           label: 'Utilisateurs' },
+  { to: '/materials',  icon: Scissors,       label: 'Matières' },
+  { to: '/suppliers',  icon: Truck,          label: 'Fournisseurs' },
+  { to: '/purchases',  icon: ShoppingCart,   label: 'Achats' },
+  { to: '/costing',    icon: Calculator,     label: 'Costing global' },
+  { to: '/documents',  icon: FileText,       label: 'Documents' },
+  { to: '/users',      icon: Users,          label: 'Utilisateurs' },
 ]
 
 export default function Sidebar() {
