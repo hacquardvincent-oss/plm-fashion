@@ -53,6 +53,7 @@ app.use('/api/documents',   require('./routes/documents'));
 app.use('/api/users',       require('./routes/users'));
 app.use('/api/fiches',      require('./routes/fiches'));
 app.use('/api/spec-sheets', require('./routes/specsheets'));
+app.use('/api/purchases',   require('./routes/purchases'));
 
 // ── HEALTH CHECK ──────────────────────────────────────────────
 app.get('/health', async (req, res) => {
@@ -94,5 +95,3 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
-
-app.use('/api/purchases', require('./routes/purchases'))
