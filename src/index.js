@@ -94,3 +94,5 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
+app.use('/api/purchases', require('./routes/purchases'))
