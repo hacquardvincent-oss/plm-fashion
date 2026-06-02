@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Truck, Star, Mail, Phone, MapPin, X } from 'lucide-react'
 import { getSuppliers, createSupplier } from '../api/suppliers.api'
 import EmptyState from '../components/ui/EmptyState'
@@ -86,8 +87,10 @@ function SupplierModal({ open, onClose }) {
 }
 
 function SupplierCard({ supplier }) {
+  const navigate = useNavigate()
   return (
-    <div className="bg-white rounded-xl border border-dark/10 p-5 space-y-3 hover:shadow-md transition-shadow">
+    <div onClick={() => navigate(`/suppliers/${supplier.id}`)}
+      className="bg-white rounded-xl border border-dark/10 p-5 space-y-3 hover:shadow-md hover:border-gold/30 transition-all cursor-pointer">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h3 className="font-semibold text-dark truncate">{supplier.name}</h3>

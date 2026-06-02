@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Plus, Search, Scissors, CheckCircle, Clock, X } from 'lucide-react'
 import { getMaterials, createMaterial } from '../api/materials.api'
 import { getSuppliers } from '../api/suppliers.api'
@@ -147,6 +148,7 @@ function MaterialModal({ open, onClose }) {
 }
 
 export default function MaterialsPage() {
+  const navigate = useNavigate()
   const { user } = useAuth()
   const [modalOpen, setModalOpen] = useState(false)
   const [filterType, setFilterType] = useState('')
@@ -221,7 +223,7 @@ export default function MaterialsPage() {
               </thead>
               <tbody className="divide-y divide-dark/5">
                 {filtered.map(m => (
-                  <tr key={m.id} className="hover:bg-cream/50 transition-colors">
+                  <tr key={m.id} onClick={() => navigate(`/materials/${m.id}`)} className="hover:bg-cream/50 transition-colors cursor-pointer">
                     <td className="px-4 py-3 font-mono text-xs text-dark/50 whitespace-nowrap">{m.code}</td>
                     <td className="px-4 py-3">
                       <div className="font-medium text-dark">{m.name}</div>

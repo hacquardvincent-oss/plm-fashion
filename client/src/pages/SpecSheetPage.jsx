@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, FileText, Scissors, Ruler, Hand,
   MessageSquare, Tag, Image, Save, Plus, Check, Clock,
-  ChevronRight, AlertCircle,
+  ChevronRight, AlertCircle, Upload, Trash2, Download,
 } from 'lucide-react'
 import { getSpecSheet, saveSpecSheet, addComment } from '../api/specsheets.api'
 import { getProduct } from '../api/products.api'
+import apiClient from '../api/client'
 import Spinner from '../components/ui/Spinner'
 import { useAuth } from '../hooks/useAuth'
 
@@ -541,9 +542,112 @@ function TabLabelling({ data }) {
 
 // ── Onglet 7 : Croquis ────────────────────────────────────────
 
-function TabCroquis({ data }) {
+function CroquisZone({ label, doc, onUpload, onDelete, canEdit }) {
+  const inputRef = useRef()
+  const [blobUrl, setBlobUrl] = useState(null)
+  const [uploading, setUploading] = useState(false)
+
+  useEffect(() => {
+    if (!doc) { setBlobUrl(null); return }
+    const isImage = doc.mime_type?.startsWith('image/')
+    if (!isImage) { setBlobUrl(null); return }
+    const token = localStorage.getItem('plm_token')
+    fetch(`/api/documents/${doc.id}/download`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(r => r.blob())
+      .then(b => setBlobUrl(URL.createObjectURL(b)))
+      .catch(() => {})
+    return () => { if (blobUrl) URL.revokeObjectURL(blobUrl) }
+  }, [doc?.id])
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setUploading(true)
+    try { await onUpload(file, label) } finally { setUploading(false) }
+  }
+
+  return (
+    <div className="space-y-2">
+      <p className="label">{label}</p>
+      {blobUrl ? (
+        <div className="relative group rounded-xl overflow-hidden border border-dark/10">
+          <img src={blobUrl} alt={label} className="w-full aspect-[3/4] object-contain bg-cream/50" />
+          {canEdit && (
+            <div className="absolute inset-0 bg-dark/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
+              <button onClick={() => inputRef.current?.click()}
+                className="bg-white text-dark rounded-lg px-3 py-2 text-xs font-medium flex items-center gap-1.5 hover:bg-gold hover:text-white transition-colors">
+                <Upload size={12} /> Remplacer
+              </button>
+              <button onClick={() => onDelete(doc.id)}
+                className="bg-white text-red-600 rounded-lg px-3 py-2 text-xs font-medium flex items-center gap-1.5 hover:bg-red-600 hover:text-white transition-colors">
+                <Trash2 size={12} /> Supprimer
+              </button>
+            </div>
+          )}
+        </div>
+      ) : doc ? (
+        <div className="rounded-xl border border-dark/10 p-4 flex items-center justify-between bg-cream/30">
+          <div>
+            <p className="text-sm font-medium text-dark">{doc.name}</p>
+            <p className="text-xs text-dark/40 mt-0.5">{(doc.file_size_bytes / 1024).toFixed(0)} Ko</p>
+          </div>
+          <div className="flex gap-2">
+            <a href={`/api/documents/${doc.id}/download`}
+              onClick={e => { e.preventDefault(); window.open(`/api/documents/${doc.id}/download`) }}
+              className="btn-ghost py-1.5 text-xs"><Download size={12} /> Télécharger</a>
+            {canEdit && <button onClick={() => onDelete(doc.id)} className="btn-ghost py-1.5 text-xs text-red-500 hover:text-red-600"><Trash2 size={12} /></button>}
+          </div>
+        </div>
+      ) : (
+        <div onClick={() => canEdit && inputRef.current?.click()}
+          className={`aspect-[3/4] rounded-xl border-2 border-dashed border-dark/10 flex flex-col items-center justify-center gap-3 bg-cream/50 transition-colors ${canEdit ? 'hover:border-gold/40 cursor-pointer' : ''}`}>
+          {uploading ? <Spinner size="md" /> : (
+            <>
+              <Image size={32} className="text-dark/20" />
+              <div className="text-center">
+                <p className="text-sm text-dark/40">{label}</p>
+                {canEdit && <p className="text-xs text-dark/25 mt-0.5">Cliquer pour uploader</p>}
+              </div>
+            </>
+          )}
+        </div>
+      )}
+      <input ref={inputRef} type="file" accept="image/*,.pdf,.ai,.eps,.dxf" className="hidden" onChange={handleFileChange} />
+    </div>
+  )
+}
+
+function TabCroquis({ data, productId, canEdit }) {
+  const qc = useQueryClient()
   const d = data ?? {}
   const details = d.details ?? []
+
+  const { data: docs = [] } = useQuery({
+    queryKey: ['documents', 'product', productId, 'croquis'],
+    queryFn: () => apiClient.get('/documents', { params: { entity_type: 'product', entity_id: productId } }).then(r => r.data.filter(d => d.type === 'croquis')),
+    enabled: !!productId,
+  })
+
+  const faceDoc = docs.find(d => d.notes === 'face') ?? null
+  const dosDoc  = docs.find(d => d.notes === 'dos')  ?? null
+  const extraDocs = docs.filter(d => d.notes !== 'face' && d.notes !== 'dos')
+
+  const handleUpload = async (file, label) => {
+    const view = label === 'Vue face' ? 'face' : label === 'Vue dos' ? 'dos' : 'detail'
+    const form = new FormData()
+    form.append('file', file)
+    form.append('entity_type', 'product')
+    form.append('entity_id', productId)
+    form.append('type', 'croquis')
+    form.append('notes', view)
+    await apiClient.post('/documents/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } })
+    qc.invalidateQueries(['documents', 'product', productId, 'croquis'])
+  }
+
+  const handleDelete = async (docId) => {
+    await apiClient.delete(`/documents/${docId}`)
+    qc.invalidateQueries(['documents', 'product', productId, 'croquis'])
+  }
 
   return (
     <div className="space-y-6">
@@ -553,7 +657,6 @@ function TabCroquis({ data }) {
           <p className="text-sm text-dark/70 leading-relaxed">{d.description}</p>
         </div>
       )}
-
       {d.notes && (
         <div className="bg-cream border border-dark/8 rounded-xl p-4">
           <p className="text-xs text-dark/40 uppercase tracking-wider mb-1">Notes</p>
@@ -562,21 +665,26 @@ function TabCroquis({ data }) {
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="aspect-[3/4] rounded-xl border-2 border-dashed border-dark/10 flex flex-col items-center justify-center gap-3 bg-cream/50 hover:border-gold/30 transition-colors cursor-pointer">
-          <Image size={32} className="text-dark/20" />
-          <div className="text-center">
-            <p className="text-sm text-dark/40">Vue face</p>
-            <p className="text-xs text-dark/25 mt-0.5">Cliquer pour uploader</p>
-          </div>
-        </div>
-        <div className="aspect-[3/4] rounded-xl border-2 border-dashed border-dark/10 flex flex-col items-center justify-center gap-3 bg-cream/50 hover:border-gold/30 transition-colors cursor-pointer">
-          <Image size={32} className="text-dark/20" />
-          <div className="text-center">
-            <p className="text-sm text-dark/40">Vue dos</p>
-            <p className="text-xs text-dark/25 mt-0.5">Cliquer pour uploader</p>
-          </div>
-        </div>
+        <CroquisZone label="Vue face" doc={faceDoc} onUpload={handleUpload} onDelete={handleDelete} canEdit={canEdit} />
+        <CroquisZone label="Vue dos"  doc={dosDoc}  onUpload={handleUpload} onDelete={handleDelete} canEdit={canEdit} />
       </div>
+
+      {extraDocs.length > 0 && (
+        <div>
+          <p className="label mb-3">Autres fichiers</p>
+          <div className="space-y-2">
+            {extraDocs.map(doc => (
+              <CroquisZone key={doc.id} label={doc.name} doc={doc} onUpload={handleUpload} onDelete={handleDelete} canEdit={canEdit} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {canEdit && (
+        <div>
+          <CroquisZone label="Ajouter un fichier" doc={null} onUpload={(f) => handleUpload(f, 'detail')} onDelete={handleDelete} canEdit={canEdit} />
+        </div>
+      )}
 
       {details.length > 0 && (
         <div>
@@ -666,7 +774,7 @@ export default function SpecSheetPage() {
       case 'prise':        return <TabPriseMesures data={sheetData.prise_mesures} />
       case 'commentaires': return <TabCommentaires productId={id} data={sheetData.commentaires} />
       case 'labelling':    return <TabLabelling data={sheetData.labelling} />
-      case 'croquis':      return <TabCroquis data={sheetData.croquis} />
+      case 'croquis':      return <TabCroquis data={sheetData.croquis} productId={id} canEdit={canEdit} />
       default: return null
     }
   }

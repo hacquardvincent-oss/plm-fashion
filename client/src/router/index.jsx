@@ -15,9 +15,10 @@ import SpecSheetsListPage from '../pages/SpecSheetsListPage'
 import PurchasesPage from '../pages/PurchasesPage'
 import PurchaseDetailPage from '../pages/PurchaseDetailPage'
 import NewPurchaseOrderPage from '../pages/NewPurchaseOrderPage'
-// — Nouveaux modules —
 import MaterialsPage from '../pages/MaterialsPage'
+import MaterialDetailPage from '../pages/MaterialDetailPage'
 import SuppliersPage from '../pages/SuppliersPage'
+import SupplierDetailPage from '../pages/SupplierDetailPage'
 import CostingPage from '../pages/CostingPage'
 
 function FullPageSpinner() {
@@ -60,7 +61,9 @@ export default function AppRouter() {
         <Route path="/fiches/:id" element={<FicheDetailPage />} />
         {/* Modules activés */}
         <Route path="/materials" element={<MaterialsPage />} />
+        <Route path="/materials/:id" element={<MaterialDetailPage />} />
         <Route path="/suppliers" element={<SuppliersPage />} />
+        <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
         <Route path="/costing" element={<CostingPage />} />
         {/* Modules à venir */}
         <Route path="/documents" element={
