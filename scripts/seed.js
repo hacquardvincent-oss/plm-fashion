@@ -667,7 +667,10 @@ async function seed() {
       INSERT INTO suppliers (code, name, country, city, contact_name, contact_email, contact_phone,
         currency, payment_terms, lead_time_days, quality_score, certifications, specialties, is_active)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-      ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name
+      ON CONFLICT (code) DO UPDATE SET
+        name=EXCLUDED.name, country=EXCLUDED.country, city=EXCLUDED.city,
+        contact_name=EXCLUDED.contact_name, contact_email=EXCLUDED.contact_email,
+        payment_terms=EXCLUDED.payment_terms, specialties=EXCLUDED.specialties
       RETURNING id
     `, [
       SUPPLIER.code, SUPPLIER.name, SUPPLIER.country, SUPPLIER.city,
@@ -686,7 +689,10 @@ async function seed() {
           color_reference, color_name, unit, price_per_unit, currency,
           supplier_id, supplier_ref, lead_time_days, is_validated, notes)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-        ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name
+        ON CONFLICT (code) DO UPDATE SET
+          name=EXCLUDED.name, composition=EXCLUDED.composition,
+          color_name=EXCLUDED.color_name, notes=EXCLUDED.notes,
+          unit=EXCLUDED.unit, price_per_unit=EXCLUDED.price_per_unit
         RETURNING id
       `, [
         mat.code, mat.name, mat.type, mat.composition ?? null,
@@ -705,7 +711,8 @@ async function seed() {
       INSERT INTO collections (code, name, season, year, status, target_refs, budget,
         description, delivery_date, showroom_date, created_by)
       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
-      ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name
+      ON CONFLICT (code) DO UPDATE SET
+        name=EXCLUDED.name, description=EXCLUDED.description
       RETURNING id
     `, [
       COLLECTION.code, COLLECTION.name, COLLECTION.season, COLLECTION.year,
@@ -725,7 +732,8 @@ async function seed() {
           target_retail_price, target_cost, target_margin,
           main_supplier_id, created_by)
         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-        ON CONFLICT (reference) DO UPDATE SET name = EXCLUDED.name
+        ON CONFLICT (reference) DO UPDATE SET
+          name=EXCLUDED.name, description=EXCLUDED.description, style_notes=EXCLUDED.style_notes
         RETURNING id
       `, [
         prodData.reference, prodData.name, prodData.type, collectionId,
