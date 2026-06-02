@@ -1,0 +1,40 @@
+name: Seed base de données
+
+on:
+  workflow_dispatch:
+    inputs:
+      script:
+        description: 'Script à exécuter'
+        required: true
+        default: 'seed:purchases'
+        type: choice
+        options:
+          - seed
+          - seed:purchases
+
+jobs:
+  seed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Installer les dépendances
+        run: npm install
+
+      - name: Lancer le seed
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          NODE_ENV: production
+        run: npm run ${{ github.event.inputs.script }}
+
+      - name: Résumé
+        run: |
+          echo "### ✅ Seed terminé" >> $GITHUB_STEP_SUMMARY
+          echo "- Script : \`${{ github.event.inputs.script }}\`" >> $GITHUB_STEP_SUMMARY
