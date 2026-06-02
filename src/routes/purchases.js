@@ -12,7 +12,7 @@ async function genRef() {
 router.get('/', auth, async (req, res) => {
   try {
     const { rows } = await pool.query(`
-      SELECT po.*, s.name as supplier_name, c.name as collection_name, u.name as created_by_name,
+      SELECT po.*, s.name as supplier_name, c.name as collection_name, (u.first_name || ' ' || u.last_name) as created_by_name,
         COUNT(pol.id)::int as lines_count,
         COALESCE(SUM(pol.quantity_ordered * pol.unit_price), 0)::numeric as total_amount,
         COUNT(pol.id) FILTER (WHERE pol.quality_status = 'nc')::int as nc_count,
@@ -51,7 +51,7 @@ router.get('/stats', auth, async (req, res) => {
 router.get('/:id', auth, async (req, res) => {
   try {
     const { rows: [po] } = await pool.query(`
-      SELECT po.*, s.name as supplier_name, c.name as collection_name, u.name as created_by_name
+      SELECT po.*, s.name as supplier_name, c.name as collection_name, (u.first_name || ' ' || u.last_name) as created_by_name
       FROM purchase_orders po
       LEFT JOIN suppliers s ON s.id = po.supplier_id
       LEFT JOIN collections c ON c.id = po.collection_id

@@ -1,6 +1,6 @@
 // client/src/pages/PurchasesPage.jsx
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { ShoppingCart, Plus, AlertTriangle, Clock, CheckCircle, Package, TrendingUp } from 'lucide-react'
 import { getPurchases, getPurchaseStats } from '../api/purchases.api'
@@ -41,6 +41,7 @@ function StatCard({ icon: Icon, label, value, color = 'text-dark' }) {
 }
 
 export default function PurchasesPage() {
+  const navigate = useNavigate()
   const [filter, setFilter] = useState('all')
   const [search, setSearch] = useState('')
 
@@ -126,8 +127,10 @@ export default function PurchasesPage() {
             const statusCfg = STATUS_LABELS[po.status] || STATUS_LABELS.draft
             const alertCfg = ALERT_CONFIG[po.delivery_alert] || ALERT_CONFIG.ok
             return (
-              <Link key={po.id} to={`/purchases/${po.id}`}
-                className={`card p-4 flex items-center gap-4 hover:border-dark/10 transition-colors group ${
+              <div key={po.id} onClick={() => navigate(`/purchases/${po.id}`)}
+                role="button" tabIndex={0}
+                onKeyDown={e => e.key === 'Enter' && navigate(`/purchases/${po.id}`)}
+                className={`card p-4 flex items-center gap-4 hover:border-dark/10 transition-colors group cursor-pointer ${
                   alertCfg.bg ? `border ${alertCfg.bg}` : ''
                 }`}>
                 <div className="w-10 h-10 rounded-xl bg-dark/5 flex items-center justify-center shrink-0">
@@ -170,7 +173,7 @@ export default function PurchasesPage() {
                       : '—'}
                   </p>
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>

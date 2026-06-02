@@ -53,6 +53,7 @@ export default function AppRouter() {
         <Route path="/spec-sheets" element={<SpecSheetsListPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />
         <Route path="/purchases" element={<PurchasesPage />} />
+        <Route path="/purchases/new" element={<PurchaseDetailPage isNew />} />
         <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
         <Route path="/fiches" element={<FichesPage />} />
         <Route path="/fiches/:id" element={<FicheDetailPage />} />

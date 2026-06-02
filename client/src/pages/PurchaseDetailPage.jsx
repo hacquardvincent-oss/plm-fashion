@@ -78,16 +78,18 @@ function ReceiveModal({ line, onClose, onSave }) {
   )
 }
 
-export default function PurchaseDetailPage() {
+export default function PurchaseDetailPage({ isNew = false }) {
   const { id } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [editStatus, setEditStatus] = useState(false)
   const [receivingLine, setReceivingLine] = useState(null)
 
-  const { data: po, isLoading } = useQuery({
+  const { data: po, isLoading, isError } = useQuery({
     queryKey: ['purchase', id],
     queryFn: () => getPurchase(id),
+    retry: 1,
+    enabled: !isNew,
   })
 
   const updateMutation = useMutation({
@@ -100,7 +102,28 @@ export default function PurchaseDetailPage() {
     onSuccess: () => { qc.invalidateQueries(['purchase', id]); setReceivingLine(null) },
   })
 
+  if (isNew) return (
+    <div className="max-w-2xl space-y-6">
+      <div className="flex items-center gap-2 text-sm">
+        <button onClick={() => navigate('/purchases')} className="btn-ghost -ml-1 text-dark/50">
+          <ArrowLeft size={14} /> Achats
+        </button>
+      </div>
+      <div className="card p-8 text-center space-y-3">
+        <h2 className="font-serif text-xl text-dark">Nouveau bon de commande</h2>
+        <p className="text-sm text-dark/40">La création de BC sera disponible prochainement.</p>
+        <button onClick={() => navigate('/purchases')} className="btn-secondary">Retour à la liste</button>
+      </div>
+    </div>
+  )
+
   if (isLoading) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>
+  if (isError) return (
+    <div className="text-center py-24 space-y-3">
+      <p className="text-dark/40">Impossible de charger ce bon de commande.</p>
+      <button onClick={() => navigate('/purchases')} className="btn-ghost">← Retour aux achats</button>
+    </div>
+  )
   if (!po) return <div className="text-center py-24 text-dark/40">Bon de commande introuvable</div>
 
   const currentStatus = STATUSES.find(s => s.id === po.status) || STATUSES[0]
