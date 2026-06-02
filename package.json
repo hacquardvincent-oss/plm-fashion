@@ -9,7 +9,8 @@
     "migrate": "node scripts/migrate.js",
     "seed": "node scripts/seed.js",
     "backup": "node scripts/backup.js",
-    "seed:purchases": "node scripts/seed_purchases.js"
+    "seed:purchases": "node scripts/seed_purchases.js",
+    "fix:encoding": "node scripts/fix_encoding.js"
   },
   "dependencies": {
     "docx": "^8.5.0",

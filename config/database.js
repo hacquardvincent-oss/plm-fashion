@@ -6,7 +6,10 @@ const pool = new Pool({
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
-  options: '-c client_encoding=UTF8',
+});
+
+pool.on('connect', (client) => {
+  client.query("SET client_encoding = 'UTF8'").catch(() => {});
 });
 
 pool.on('error', (err) => {

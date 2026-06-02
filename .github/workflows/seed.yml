@@ -11,6 +11,7 @@ on:
         options:
           - seed
           - seed:purchases
+          - fix:encoding
 
 jobs:
   seed:
