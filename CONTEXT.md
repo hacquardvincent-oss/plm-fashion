@@ -82,9 +82,9 @@ plm-fashion/
 **Cause 1** : `purchases.api.js` importait `'./api'` au lieu de `'./client'` → résolu commit `f4e230e`
 **Cause 2** : `src/routes/purchases.js` requireait `'../db'` (inexistant) au lieu de `'../../config/database'` → résolu commit `42241ce`
 
-### ⚠️ BUG-003 — Credentials admin dans README public
-**Action** : Supprimer de `README.md` : `admin@plm-fashion.com / Admin1234!`
-**Statut** : **À faire en priorité**
+### ✅ BUG-003 — Credentials admin dans README public
+**Action** : Supprimés de `README.md` → remplacés par une note générique
+**Statut** : Résolu commit `02/06/2026`
 
 ---
 
@@ -114,9 +114,10 @@ Structure de référence :
 ## Roadmap
 
 ### Priorité 1 — Stabilisation immédiate
-- [ ] **BUG-003** : Supprimer credentials du README
-- [ ] **BUG-001** : Vérifier déploiement `_redirects` sur Render
-- [ ] Backup automatique DB (pg_dump cron ou Render paid)
+- [x] **BUG-003** : Supprimer credentials du README ✅
+- [x] **BUG-001** : `_redirects` créé et déployé ✅
+- [x] **Script backup DB** : `npm run backup` → `scripts/backup.js` (pg_dump + rotation 7 fichiers) ✅
+- [ ] **Automatiser le backup** : cron Render (paid) ou GitHub Actions planifié
 
 ### Priorité 2 — Enrichissement modules existants
 - [ ] **Croquis** : section dédiée dans FTP (upload image + éditeur canvas face/dos/détail + annotations)
@@ -146,5 +147,9 @@ Structure de référence :
 - Fichiers mal nommés au upload (`purchases_api.js`, `purchases_routes.js`) → renommés aux bons chemins
 
 ### Session 02/06/2026
-- Mise à jour CONTEXT.md (ce fichier)
-- Tentative ajout pages Matières / Fournisseurs / Costing + fix `_redirects` (fichiers Drive inaccessibles — upload direct nécessaire)
+- Mise à jour CONTEXT.md
+- Ajout pages Matières, Fournisseurs, Costing + fix `_redirects` (BUG-001)
+- Nouveau router `index.jsx` (PlaceholderPage → vrais modules)
+- BUG-003 résolu : credentials supprimés du README
+- Script backup DB créé (`scripts/backup.js`) + `npm run backup`
+- Auto-deploy Render réactivé (avait été désactivé suite à deploy manuel)

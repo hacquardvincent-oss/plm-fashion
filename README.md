@@ -56,7 +56,7 @@ NODE_ENV=development
 Le fichier `render.yaml` configure le déploiement automatique.
 À chaque push sur `main`, Render redéploie automatiquement.
 
-## Accès admin par défaut
-- Email : `admin@plm-fashion.com`
-- Mot de passe : `Admin1234!`
-- ⚠️ **À changer immédiatement en production**
+## Accès admin
+
+Le compte admin est créé automatiquement lors de la première migration (`npm run migrate`).
+Les identifiants sont définis dans `scripts/migrate.js` — **modifiez-les avant tout déploiement en production**.
