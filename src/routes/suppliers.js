@@ -12,8 +12,8 @@ router.get('/', async (req, res) => {
       ROUND(AVG(e.score), 1) AS avg_score
       FROM suppliers s
       LEFT JOIN supplier_evaluations e ON e.supplier_id = s.id
-      WHERE 1=1`;
-    const params = [];
+      WHERE s.organization_id = $1`;
+    const params = [req.orgId];
     if (country)   { params.push(country);              sql += ` AND s.country = $${params.length}`; }
     if (is_active) { params.push(is_active === 'true'); sql += ` AND s.is_active = $${params.length}`; }
     if (search) {

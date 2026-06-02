@@ -26,6 +26,7 @@ router.get('/', auth, async (req, res) => {
       LEFT JOIN collections c ON c.id = po.collection_id
       LEFT JOIN users u ON u.id = po.created_by
       LEFT JOIN purchase_order_lines pol ON pol.order_id = po.id
+      WHERE po.organization_id = $1
       GROUP BY po.id, s.name, c.name, u.first_name, u.last_name
       ORDER BY po.created_at DESC
     `)
@@ -43,7 +44,8 @@ router.get('/stats', auth, async (req, res) => {
         COALESCE(SUM(t.total) FILTER (WHERE po.status NOT IN ('cancelled')), 0)::numeric as total_engaged
       FROM purchase_orders po
       LEFT JOIN LATERAL (SELECT COALESCE(SUM(quantity_ordered * unit_price),0) as total FROM purchase_order_lines WHERE order_id = po.id) t ON true
-    `)
+      WHERE po.organization_id = $1
+    `, [req.orgId])
     res.json(stats)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -77,9 +79,9 @@ router.post('/', auth, async (req, res) => {
     await client.query('BEGIN')
     const ref = await genRef()
     const { rows: [po] } = await client.query(`
-      INSERT INTO purchase_orders (reference, supplier_id, collection_id, expected_delivery, notes, created_by)
-      VALUES ($1,$2,$3,$4,$5,$6) RETURNING *
-    `, [ref, supplier_id, collection_id, expected_delivery, notes, req.user.id])
+      INSERT INTO purchase_orders (reference, supplier_id, collection_id, expected_delivery, notes, created_by, organization_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *
+    `, [ref, supplier_id, collection_id, expected_delivery, notes, req.user.id, req.orgId])
     for (const l of lines) {
       await client.query(`
         INSERT INTO purchase_order_lines (order_id,material_id,product_id,designation,coloris,quantity_ordered,unit,unit_price)

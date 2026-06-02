@@ -27,8 +27,14 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ error: 'Identifiants incorrects' });
     }
 
+    const orgRes = await query(
+      'SELECT id, name, slug, plan FROM organizations WHERE id = $1',
+      [user.organization_id]
+    );
+    const org = orgRes.rows[0] ?? null;
+
     const token = jwt.sign(
-      { userId: user.id, role: user.role },
+      { userId: user.id, role: user.role, orgId: user.organization_id },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -56,6 +62,7 @@ router.post('/login', async (req, res) => {
         firstName: user.first_name,
         lastName: user.last_name,
         role: user.role,
+        organization: org,
       },
     });
   } catch (err) {

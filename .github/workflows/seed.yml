@@ -12,6 +12,7 @@ on:
           - seed
           - seed:purchases
           - fix:encoding
+          - migrate:multitenant
 
 jobs:
   seed:

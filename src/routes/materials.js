@@ -14,8 +14,8 @@ router.get('/', async (req, res) => {
       FROM materials m
       LEFT JOIN suppliers s ON s.id = m.supplier_id
       LEFT JOIN users u ON u.id = m.validated_by
-      WHERE 1=1`;
-    const params = [];
+      WHERE m.organization_id = $1`;
+    const params = [req.orgId];
     if (type)         { params.push(type);         sql += ` AND m.type = $${params.length}`; }
     if (supplier_id)  { params.push(supplier_id);  sql += ` AND m.supplier_id = $${params.length}`; }
     if (is_validated !== undefined) {
