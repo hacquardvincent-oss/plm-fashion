@@ -14,8 +14,9 @@ router.get('/', async (req, res) => {
       FROM collections c
       LEFT JOIN users u ON u.id = c.created_by
       LEFT JOIN products p ON p.collection_id = c.id
-      WHERE c.organization_id = $1`;
-    const params = [req.orgId];
+      WHERE 1=1`;
+    const params = [];
+    if (req.orgId) { params.push(req.orgId); sql += ` AND c.organization_id = $${params.length}`; }
     if (status) { params.push(status); sql += ` AND c.status = $${params.length}`; }
     if (year)   { params.push(year);   sql += ` AND c.year = $${params.length}`; }
     sql += ' GROUP BY c.id, u.first_name, u.last_name ORDER BY c.year DESC, c.created_at DESC';

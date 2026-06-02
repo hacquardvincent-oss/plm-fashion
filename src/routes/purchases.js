@@ -26,10 +26,10 @@ router.get('/', auth, async (req, res) => {
       LEFT JOIN collections c ON c.id = po.collection_id
       LEFT JOIN users u ON u.id = po.created_by
       LEFT JOIN purchase_order_lines pol ON pol.order_id = po.id
-      WHERE po.organization_id = $1
+      ${req.orgId ? 'WHERE po.organization_id = $1' : ''}
       GROUP BY po.id, s.name, c.name, u.first_name, u.last_name
       ORDER BY po.created_at DESC
-    `)
+    `, req.orgId ? [req.orgId] : [])
     res.json(rows)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
@@ -44,8 +44,8 @@ router.get('/stats', auth, async (req, res) => {
         COALESCE(SUM(t.total) FILTER (WHERE po.status NOT IN ('cancelled')), 0)::numeric as total_engaged
       FROM purchase_orders po
       LEFT JOIN LATERAL (SELECT COALESCE(SUM(quantity_ordered * unit_price),0) as total FROM purchase_order_lines WHERE order_id = po.id) t ON true
-      WHERE po.organization_id = $1
-    `, [req.orgId])
+      ${req.orgId ? 'WHERE po.organization_id = $1' : ''}
+    `, req.orgId ? [req.orgId] : [])
     res.json(stats)
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

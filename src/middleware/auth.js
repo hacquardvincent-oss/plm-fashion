@@ -12,19 +12,31 @@ const authenticate = async (req, res, next) => {
     }
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    const result = await query(
-      `SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.is_active,
-              u.organization_id, o.name AS organization_name, o.slug AS organization_slug, o.plan AS organization_plan
-       FROM users u
-       LEFT JOIN organizations o ON o.id = u.organization_id
-       WHERE u.id = $1`,
-      [decoded.userId]
-    );
-    if (!result.rows.length || !result.rows[0].is_active) {
+    // Essaie la requête enrichie avec organization, fallback sur la requête simple
+    let userRow
+    try {
+      const result = await query(
+        `SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.is_active,
+                u.organization_id, o.name AS organization_name, o.slug AS organization_slug, o.plan AS organization_plan
+         FROM users u
+         LEFT JOIN organizations o ON o.id = u.organization_id
+         WHERE u.id = $1`,
+        [decoded.userId]
+      )
+      userRow = result.rows[0]
+    } catch {
+      // La table organizations n'existe pas encore (migration en attente)
+      const result = await query(
+        'SELECT id, email, first_name, last_name, role, is_active FROM users WHERE id = $1',
+        [decoded.userId]
+      )
+      userRow = result.rows[0]
+    }
+    if (!userRow || !userRow.is_active) {
       return res.status(401).json({ error: 'Utilisateur introuvable ou désactivé' });
     }
-    req.user = result.rows[0];
-    req.orgId = result.rows[0].organization_id;
+    req.user = userRow;
+    req.orgId = userRow.organization_id ?? null;
     next();
   } catch (err) {
     if (err.name === 'TokenExpiredError') {
