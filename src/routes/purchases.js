@@ -26,7 +26,7 @@ router.get('/', auth, async (req, res) => {
       LEFT JOIN collections c ON c.id = po.collection_id
       LEFT JOIN users u ON u.id = po.created_by
       LEFT JOIN purchase_order_lines pol ON pol.order_id = po.id
-      GROUP BY po.id, s.name, c.name, u.name
+      GROUP BY po.id, s.name, c.name, u.first_name, u.last_name
       ORDER BY po.created_at DESC
     `)
     res.json(rows)
