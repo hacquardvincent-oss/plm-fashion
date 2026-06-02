@@ -21,6 +21,7 @@ const q = (text, params) => pool.query(text, params)
 const TOP_LEVEL_TABLES = [
   'users',
   'collections',
+  'products',
   'materials',
   'suppliers',
   'purchase_orders',
