@@ -78,7 +78,7 @@ function ReceiveModal({ line, onClose, onSave }) {
   )
 }
 
-export default function PurchaseDetailPage({ isNew = false }) {
+export default function PurchaseDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
@@ -89,7 +89,6 @@ export default function PurchaseDetailPage({ isNew = false }) {
     queryKey: ['purchase', id],
     queryFn: () => getPurchase(id),
     retry: 1,
-    enabled: !isNew,
   })
 
   const updateMutation = useMutation({
@@ -101,21 +100,6 @@ export default function PurchaseDetailPage({ isNew = false }) {
     mutationFn: ({ lineId, qty, quality }) => receiveLine(lineId, { quantity_received: qty, quality_status: quality }),
     onSuccess: () => { qc.invalidateQueries(['purchase', id]); setReceivingLine(null) },
   })
-
-  if (isNew) return (
-    <div className="max-w-2xl space-y-6">
-      <div className="flex items-center gap-2 text-sm">
-        <button onClick={() => navigate('/purchases')} className="btn-ghost -ml-1 text-dark/50">
-          <ArrowLeft size={14} /> Achats
-        </button>
-      </div>
-      <div className="card p-8 text-center space-y-3">
-        <h2 className="font-serif text-xl text-dark">Nouveau bon de commande</h2>
-        <p className="text-sm text-dark/40">La création de BC sera disponible prochainement.</p>
-        <button onClick={() => navigate('/purchases')} className="btn-secondary">Retour à la liste</button>
-      </div>
-    </div>
-  )
 
   if (isLoading) return <div className="flex justify-center py-24"><Spinner size="lg" /></div>
   if (isError) return (
