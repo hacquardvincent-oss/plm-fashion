@@ -671,6 +671,43 @@ DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN entities_en          JSONB;   
 DO $$ BEGIN ALTER TABLE product_fiches ADD COLUMN how_to_care_jsonld   JSONB;          EXCEPTION WHEN duplicate_column THEN NULL; END $$;
 
 -- ============================================================
+--  MODULE ACHATS
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS purchase_orders (
+  id                 SERIAL PRIMARY KEY,
+  reference          VARCHAR(50) UNIQUE NOT NULL,
+  supplier_id        INTEGER REFERENCES suppliers(id) ON DELETE SET NULL,
+  collection_id      INTEGER REFERENCES collections(id) ON DELETE SET NULL,
+  status             VARCHAR(30) NOT NULL DEFAULT 'draft',
+  order_date         DATE DEFAULT CURRENT_DATE,
+  expected_delivery  DATE,
+  actual_delivery    DATE,
+  carrier            VARCHAR(100),
+  tracking_number    VARCHAR(100),
+  notes              TEXT,
+  created_by         INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  created_at         TIMESTAMP DEFAULT NOW(),
+  updated_at         TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS purchase_order_lines (
+  id                  SERIAL PRIMARY KEY,
+  order_id            INTEGER NOT NULL REFERENCES purchase_orders(id) ON DELETE CASCADE,
+  material_id         INTEGER REFERENCES materials(id) ON DELETE SET NULL,
+  product_id          INTEGER REFERENCES products(id) ON DELETE SET NULL,
+  designation         VARCHAR(200),
+  coloris             VARCHAR(100),
+  quantity_ordered    NUMERIC(10,2) NOT NULL DEFAULT 0,
+  quantity_received   NUMERIC(10,2) NOT NULL DEFAULT 0,
+  unit                VARCHAR(20) DEFAULT 'ml',
+  unit_price          NUMERIC(10,2) DEFAULT 0,
+  quality_status      VARCHAR(20) DEFAULT 'pending',
+  created_at          TIMESTAMP DEFAULT NOW(),
+  updated_at          TIMESTAMP DEFAULT NOW()
+);
+
+-- ============================================================
 --  DONNÉES DE RÉFÉRENCE INITIALES
 -- ============================================================
 
