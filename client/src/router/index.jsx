@@ -12,8 +12,10 @@ import FicheDetailPage from '../pages/FicheDetailPage'
 import PlaceholderPage from '../pages/PlaceholderPage'
 import SpecSheetPage from '../pages/SpecSheetPage'
 import SpecSheetsListPage from '../pages/SpecSheetsListPage'
-import PurchasesPage from '../pages/PurchasesPage'
-import PurchaseDetailPage from '../pages/PurchaseDetailPage'
+// — Nouveaux modules —
+import MaterialsPage from '../pages/MaterialsPage'
+import SuppliersPage from '../pages/SuppliersPage'
+import CostingPage from '../pages/CostingPage'
 
 function FullPageSpinner() {
   return (
@@ -48,19 +50,13 @@ export default function AppRouter() {
         <Route path="/products/:id/spec-sheet" element={<SpecSheetPage />} />
         <Route path="/spec-sheets" element={<SpecSheetsListPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />
-        <Route path="/purchases" element={<PurchasesPage />} />
-        <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
         <Route path="/fiches" element={<FichesPage />} />
         <Route path="/fiches/:id" element={<FicheDetailPage />} />
-        <Route path="/materials" element={
-          <PlaceholderPage title="Matières" description="Gestion du catalogue matières et fournitures — disponible prochainement." />
-        } />
-        <Route path="/suppliers" element={
-          <PlaceholderPage title="Fournisseurs" description="Annuaire fournisseurs, évaluations et portail d'accès — disponible prochainement." />
-        } />
-        <Route path="/costing" element={
-          <PlaceholderPage title="Costing global" description="Vue consolidée des coûts par collection — disponible prochainement." />
-        } />
+        {/* Modules activés */}
+        <Route path="/materials" element={<MaterialsPage />} />
+        <Route path="/suppliers" element={<SuppliersPage />} />
+        <Route path="/costing" element={<CostingPage />} />
+        {/* Modules à venir */}
         <Route path="/documents" element={
           <PlaceholderPage title="Documents" description="Gestion documentaire centralisée — disponible prochainement." />
         } />
