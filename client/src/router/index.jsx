@@ -12,6 +12,8 @@ import FicheDetailPage from '../pages/FicheDetailPage'
 import PlaceholderPage from '../pages/PlaceholderPage'
 import SpecSheetPage from '../pages/SpecSheetPage'
 import SpecSheetsListPage from '../pages/SpecSheetsListPage'
+import PurchasesPage from '../pages/PurchasesPage'
+import PurchaseDetailPage from '../pages/PurchaseDetailPage'
 // — Nouveaux modules —
 import MaterialsPage from '../pages/MaterialsPage'
 import SuppliersPage from '../pages/SuppliersPage'
@@ -50,6 +52,8 @@ export default function AppRouter() {
         <Route path="/products/:id/spec-sheet" element={<SpecSheetPage />} />
         <Route path="/spec-sheets" element={<SpecSheetsListPage />} />
         <Route path="/workflows" element={<WorkflowsPage />} />
+        <Route path="/purchases" element={<PurchasesPage />} />
+        <Route path="/purchases/:id" element={<PurchaseDetailPage />} />
         <Route path="/fiches" element={<FichesPage />} />
         <Route path="/fiches/:id" element={<FicheDetailPage />} />
         {/* Modules activés */}
