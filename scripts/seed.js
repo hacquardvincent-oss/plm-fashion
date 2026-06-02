@@ -655,9 +655,9 @@ async function seed() {
 
   try {
     // Récupérer l'admin
-    const adminRes = await q(`SELECT id FROM users WHERE email = 'admin@plm.local' LIMIT 1`);
+    const adminRes = await q(`SELECT id FROM users LIMIT 1`);
     if (!adminRes.rows.length) {
-      throw new Error("Utilisateur admin@plm.local introuvable. Lancer d'abord le schema.sql.");
+      throw new Error("Aucun utilisateur trouvé. Lancer d'abord migrate.js.");
     }
     const adminId = adminRes.rows[0].id;
     console.log(`✓ Admin trouvé : ${adminId}`);
