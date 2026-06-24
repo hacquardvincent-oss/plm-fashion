@@ -9,10 +9,11 @@ on:
         default: 'seed:purchases'
         type: choice
         options:
+          - migrate
+          - migrate:multitenant
           - seed
           - seed:purchases
           - fix:encoding
-          - migrate:multitenant
 
 jobs:
   seed:
