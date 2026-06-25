@@ -75,7 +75,7 @@ async function seed() {
   }, evFashionId, orgId)
 
   const thermocollId = await upsertMaterial({
-    code: 'MAT-THERM', name: 'Thermocollant', type: 'fourniture',
+    code: 'MAT-THERM', name: 'Thermocollant', type: 'autre',
     unit: 'ml',
   }, blueDimoId, orgId)
 
@@ -85,12 +85,12 @@ async function seed() {
   }, blueDimoId, orgId)
 
   const elasticId = await upsertMaterial({
-    code: 'MAT-ELAS-1CM', name: 'Elastic Tape 1cm', type: 'fourniture',
+    code: 'MAT-ELAS-1CM', name: 'Elastic Tape 1cm', type: 'autre',
     unit: 'ml',
   }, evFashionId, orgId)
 
   const lightFusId = await upsertMaterial({
-    code: 'MAT-LIGHT-FUS', name: 'Light Fusible', type: 'fourniture',
+    code: 'MAT-LIGHT-FUS', name: 'Light Fusible', type: 'autre',
     unit: 'ml',
   }, evFashionId, orgId)
 
@@ -120,8 +120,8 @@ async function seed() {
       reference: '0HVA39-V04010',
       name: 'DOMPAY',
       theme: '6HVA71',
-      type: 'bas',
-      status: 'proto',
+      type: 'pret_a_porter',
+      status: 'proto_1',
       supplier_id: blueDimoId,
       proto_size: '36',
       coloris: 'TONE ON TONE',
@@ -132,8 +132,8 @@ async function seed() {
       reference: '0HVA39-V04846',
       name: 'JERRY',
       theme: '0HVA39',
-      type: 'bas',
-      status: 'proto',
+      type: 'pret_a_porter',
+      status: 'proto_1',
       supplier_id: blueDimoId,
       proto_size: '34',
       coloris: '566 BORDEAUX / 888 NAVY',
@@ -148,8 +148,8 @@ async function seed() {
       reference: '1EVA32-V09413',
       name: 'BELL',
       theme: '1EVA32',
-      type: 'haut',
-      status: 'proto',
+      type: 'pret_a_porter',
+      status: 'proto_1',
       supplier_id: evFashionId,
       proto_size: 'M/L',
       coloris: 'TONE ON TONE / 001 BLANC',
@@ -164,7 +164,7 @@ async function seed() {
       reference: '1EVA69-V04844',
       name: 'LAUREN',
       theme: '1EVA69',
-      type: 'haut',
+      type: 'pret_a_porter',
       status: 'concept',
       supplier_id: null,
       proto_size: '36',
@@ -176,7 +176,7 @@ async function seed() {
       reference: '1EVA94-V09928',
       name: 'HALISSON',
       theme: '1EVA94',
-      type: 'haut',
+      type: 'pret_a_porter',
       status: 'concept',
       supplier_id: null,
       proto_size: 'S',
