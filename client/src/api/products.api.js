@@ -20,3 +20,15 @@ export const deleteBomLine = (productId, bomId) =>
 
 export const addVariant = (productId, data) =>
   apiClient.post(`/products/${productId}/variants`, data).then((r) => r.data)
+
+export const getProductVersions = (productId) =>
+  apiClient.get(`/products/${productId}/versions`).then(r => r.data)
+
+export const getVersionBom = (productId, versionId) =>
+  apiClient.get(`/products/${productId}/versions/${versionId}/bom`).then(r => r.data)
+
+export const createProductVersion = (productId, data) =>
+  apiClient.post(`/products/${productId}/versions`, data).then(r => r.data)
+
+export const setCurrentVersion = (productId, versionId) =>
+  apiClient.patch(`/products/${productId}/versions/${versionId}/set-current`).then(r => r.data)

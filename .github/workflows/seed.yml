@@ -15,6 +15,7 @@ on:
           - seed:purchases
           - seed:vb26h
           - fix:encoding
+          - migrate:versioning
 
 jobs:
   seed:

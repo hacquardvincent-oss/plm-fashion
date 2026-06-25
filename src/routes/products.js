@@ -1,5 +1,5 @@
 const router = require('express').Router();
-const { query } = require('../../config/database');
+const { query, getClient } = require('../../config/database');
 const { authenticate, authorize } = require('../middleware/auth');
 
 router.use(authenticate);
@@ -40,10 +40,14 @@ router.get('/:id', async (req, res) => {
   try {
     const [product, variants, bom, costings, workflows] = await Promise.all([
       query(`
-        SELECT p.*, c.name AS collection_name, s.name AS supplier_name
+        SELECT p.*, c.name AS collection_name, s.name AS supplier_name,
+          pv.status AS current_version_status,
+          pv.label AS current_version_label,
+          pv.version_number AS current_version_number
         FROM products p
         LEFT JOIN collections c ON c.id = p.collection_id
         LEFT JOIN suppliers s ON s.id = p.main_supplier_id
+        LEFT JOIN product_versions pv ON pv.product_id = p.id AND pv.is_current = true
         WHERE p.id = $1`, [req.params.id]),
       query('SELECT * FROM product_variants WHERE product_id = $1 ORDER BY color_name, size', [req.params.id]),
       query(`
@@ -175,5 +179,105 @@ router.delete('/:id/bom/:bomId', async (req, res) => {
     res.status(500).json({ error: 'Erreur serveur' });
   }
 });
+
+// ── VERSIONS ──────────────────────────────────────────────────
+
+// GET /api/products/:id/versions
+router.get('/:id/versions', async (req, res) => {
+  try {
+    const { rows } = await query(`
+      SELECT pv.*,
+        u.first_name || ' ' || u.last_name AS created_by_name,
+        (SELECT COUNT(*) FROM version_bom vb WHERE vb.version_id = pv.id) AS bom_count
+      FROM product_versions pv
+      LEFT JOIN users u ON u.id = pv.created_by
+      WHERE pv.product_id = $1
+      ORDER BY pv.version_number ASC
+    `, [req.params.id])
+    res.json(rows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Erreur serveur' })
+  }
+})
+
+// GET /api/products/:id/versions/:vid/bom
+router.get('/:id/versions/:vid/bom', async (req, res) => {
+  try {
+    const { rows } = await query(`
+      SELECT vb.*, m.name AS material_name, m.reference AS material_reference
+      FROM version_bom vb
+      LEFT JOIN materials m ON m.id = vb.material_id
+      WHERE vb.version_id = $1
+      ORDER BY vb.usage_type, m.name
+    `, [req.params.vid])
+    res.json(rows)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Erreur serveur' })
+  }
+})
+
+// POST /api/products/:id/versions
+router.post('/:id/versions', async (req, res) => {
+  const { label, status, proto_size, coloris, notes, copy_bom } = req.body
+  const client = await getClient()
+  try {
+    await client.query('BEGIN')
+    // Get next version number
+    const { rows: [{ max_v }] } = await client.query(
+      'SELECT COALESCE(MAX(version_number), 0) AS max_v FROM product_versions WHERE product_id = $1',
+      [req.params.id]
+    )
+    const nextNum = Number(max_v) + 1
+
+    // Mark all previous as not current
+    await client.query('UPDATE product_versions SET is_current = false WHERE product_id = $1', [req.params.id])
+
+    const { rows: [pv] } = await client.query(`
+      INSERT INTO product_versions (product_id, version_number, label, status, proto_size, coloris, notes, created_by, is_current)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true) RETURNING *
+    `, [req.params.id, nextNum, label || `Proto ${nextNum}`, status || 'proto_1', proto_size || null, coloris || null, notes || null, req.user.id])
+
+    if (copy_bom && nextNum > 1) {
+      // Find previous version's BOM
+      const { rows: prevBom } = await client.query(`
+        SELECT vb.* FROM version_bom vb
+        JOIN product_versions pv ON pv.id = vb.version_id
+        WHERE pv.product_id = $1 AND pv.version_number = $2
+      `, [req.params.id, nextNum - 1])
+      for (const b of prevBom) {
+        await client.query(
+          'INSERT INTO version_bom (version_id, material_id, designation, usage_type, quantity, unit, waste_factor, unit_price, notes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+          [pv.id, b.material_id, b.designation, b.usage_type, b.quantity, b.unit, b.waste_factor, b.unit_price, b.notes]
+        )
+      }
+    }
+
+    await client.query('COMMIT')
+    res.status(201).json(pv)
+  } catch (err) {
+    await client.query('ROLLBACK')
+    console.error(err)
+    res.status(500).json({ error: 'Erreur serveur' })
+  } finally {
+    client.release()
+  }
+})
+
+// PATCH /api/products/:id/versions/:vid/set-current
+router.patch('/:id/versions/:vid/set-current', async (req, res) => {
+  try {
+    await query('UPDATE product_versions SET is_current = false WHERE product_id = $1', [req.params.id])
+    const { rows: [pv] } = await query(
+      'UPDATE product_versions SET is_current = true WHERE id = $1 RETURNING *',
+      [req.params.vid]
+    )
+    res.json(pv)
+  } catch (err) {
+    console.error(err)
+    res.status(500).json({ error: 'Erreur serveur' })
+  }
+})
 
 module.exports = router;
