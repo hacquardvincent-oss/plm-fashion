@@ -5,16 +5,18 @@ services:
     plan: free
     rootDir: .
     buildCommand: npm install
-    startCommand: npm run migrate && npm start
+    # Le serveur démarre directement (pas de migration au boot) → réveil à froid rapide.
+    # Les migrations/seeds se lancent à la demande via GitHub Actions (.github/workflows/seed.yml).
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: JWT_SECRET
         generateValue: true
+      # DATABASE_URL est géré manuellement dans le dashboard Render (base Neon).
+      # sync: false empêche le Blueprint d'écraser cette valeur au redéploiement.
       - key: DATABASE_URL
-        fromDatabase:
-          name: plm-fashion-db
-          property: connectionString
+        sync: false
     healthCheckPath: /health
 
   - type: static
