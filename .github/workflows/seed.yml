@@ -19,6 +19,7 @@ on:
           - seed:commercial
           - migrate:returns
           - seed:returns
+          - seed:demo
           - fix:encoding
 
 jobs:

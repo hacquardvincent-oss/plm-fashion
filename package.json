@@ -17,7 +17,8 @@
     "migrate:commercial": "node scripts/migrate_commercial.js",
     "seed:commercial": "node scripts/seed_commercial.js",
     "migrate:returns": "node scripts/migrate_returns.js",
-    "seed:returns": "node scripts/seed_returns.js"
+    "seed:returns": "node scripts/seed_returns.js",
+    "seed:demo": "node scripts/seed_demo.js"
   },
   "dependencies": {
     "docx": "^8.5.0",
