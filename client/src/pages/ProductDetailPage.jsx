@@ -14,6 +14,7 @@ import BomFormModal from '../components/products/BomFormModal'
 import VariantFormModal from '../components/products/VariantFormModal'
 import CostingForm from '../components/products/CostingForm'
 import WorkflowFormModal from '../components/workflows/WorkflowFormModal'
+import ReturnInsightsPanel from '../components/returns/ReturnInsightsPanel'
 import { decideWorkflow } from '../api/workflows.api'
 import { formatCurrency, formatDate, PRODUCT_TYPE_LABELS } from '../utils/status'
 import { useAuth } from '../hooks/useAuth'
@@ -228,6 +229,7 @@ function TabFiche({ product }) {
   ]
   return (
     <div className="space-y-6">
+      <ReturnInsightsPanel type={product.type} family={product.family} subFamily={product.sub_family} compact />
       {product.description && (
         <div>
           <p className="label">Description</p>

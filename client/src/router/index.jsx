@@ -21,6 +21,7 @@ import SuppliersPage from '../pages/SuppliersPage'
 import SupplierDetailPage from '../pages/SupplierDetailPage'
 import CostingPage from '../pages/CostingPage'
 import AnalyticsPage from '../pages/AnalyticsPage'
+import ReturnsPage from '../pages/ReturnsPage'
 
 function FullPageSpinner() {
   return (
@@ -67,6 +68,7 @@ export default function AppRouter() {
         <Route path="/suppliers/:id" element={<SupplierDetailPage />} />
         <Route path="/costing" element={<CostingPage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
+        <Route path="/returns" element={<ReturnsPage />} />
         {/* Modules à venir */}
         <Route path="/documents" element={
           <PlaceholderPage title="Documents" description="Gestion documentaire centralisée — disponible prochainement." />

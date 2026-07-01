@@ -17,6 +17,8 @@ on:
           - migrate:versioning
           - migrate:commercial
           - seed:commercial
+          - migrate:returns
+          - seed:returns
           - fix:encoding
 
 jobs:

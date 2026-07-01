@@ -2,12 +2,13 @@ import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Layers, Package, Scissors, Truck,
   Calculator, GitMerge, BookOpen, FileText, Users,
-  ClipboardList, ShoppingCart, BarChart3,
+  ClipboardList, ShoppingCart, BarChart3, Undo2,
 } from 'lucide-react'
 
 const NAV_ITEMS = [
   { to: '/dashboard',   icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/analytics',   icon: BarChart3,       label: 'Performance' },
+  { to: '/returns',     icon: Undo2,           label: 'Retours clients' },
   { to: '/collections', icon: Layers,          label: 'Collections' },
   { to: '/workflows',   icon: GitMerge,        label: 'Workflows' },
   { to: '/spec-sheets', icon: ClipboardList,   label: 'Fiches techniques' },

@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import Modal from '../ui/Modal'
 import { createProduct, updateProduct } from '../../api/products.api'
 import { getSuppliers } from '../../api/suppliers.api'
+import ReturnInsightsPanel from '../returns/ReturnInsightsPanel'
 
 const TYPES = [
   { value: 'pret_a_porter', label: 'Prêt-à-porter' },
@@ -146,6 +147,9 @@ export default function ProductFormModal({ open, onClose, collectionId, product 
               placeholder="Blazers, Totes…" className="input-field" />
           </div>
         </div>
+
+        {/* Recommandations retours clients — live selon type/famille saisis */}
+        <ReturnInsightsPanel type={form.type} family={form.family} subFamily={form.sub_family} compact />
 
         <div className="grid grid-cols-3 gap-4">
           <div>
