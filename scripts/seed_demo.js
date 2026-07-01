@@ -138,8 +138,18 @@ const PRODUCTS_META = {
       { position: 2, designation: 'Fusible léger', matiere: 'Light Fusible', ref: 'LIGHT-FUS', fournisseur: 'EV FASHION', quantite: '0.3', unite: 'ml', coloris: 'Blanc', commentaire: '' },
       { position: 3, designation: 'Élastique', matiere: 'Elastic Tape 1cm', ref: 'ELAS-1CM', fournisseur: 'EV FASHION', quantite: '0.5', unite: 'ml', coloris: 'Blanc', commentaire: 'Poignets' },
     ] },
-  LAUREN:  { theme: '1EVA69', fabricant: 'EV FASHION', categorie: 'Robe', matiere: 'Voile Façonné', composition: '55% CO 45% VI', grammage: '82', largeur: '130', longueur: 110, coloris: 'TONE ON TONE', pays: 'Portugal', fcm: [] },
-  HALISSON:{ theme: '1EVA94', fabricant: 'EV FASHION', categorie: 'Robe', matiere: 'Voile Façonné', composition: '55% CO 45% VI', grammage: '82', largeur: '130', longueur: 96, coloris: 'TONE ON TONE', pays: 'Portugal', fcm: [] },
+  LAUREN:  { theme: '1EVA69', fabricant: 'EV FASHION', categorie: 'Robe', matiere: 'Voile Façonné', composition: '55% CO 45% VI', grammage: '82', largeur: '130', longueur: 110, coloris: 'TONE ON TONE', pays: 'Portugal',
+    fcm: [
+      { position: 1, designation: 'Tissu principal', matiere: 'Voile Façonné 55CO/45VI', ref: 'VOI-FAC', fournisseur: 'EV FASHION', quantite: '2.6', unite: 'ml', coloris: 'Tone on tone', commentaire: 'Robe longue' },
+      { position: 2, designation: 'Doublure buste', matiere: 'Doublure 100% CO', ref: 'DOUB-CO', fournisseur: 'BLUE DIMO', quantite: '0.8', unite: 'ml', coloris: 'Écru', commentaire: '' },
+      { position: 3, designation: 'Fermeture', matiere: 'Zip invisible 40cm', ref: 'ZIP-40', fournisseur: 'EV FASHION', quantite: '1', unite: 'pce', coloris: 'Assorti', commentaire: 'Dos' },
+    ] },
+  HALISSON:{ theme: '1EVA94', fabricant: 'EV FASHION', categorie: 'Robe', matiere: 'Voile Façonné', composition: '55% CO 45% VI', grammage: '82', largeur: '130', longueur: 96, coloris: 'TONE ON TONE', pays: 'Portugal',
+    fcm: [
+      { position: 1, designation: 'Tissu principal', matiere: 'Voile Façonné 55CO/45VI', ref: 'VOI-FAC', fournisseur: 'EV FASHION', quantite: '2.2', unite: 'ml', coloris: 'Tone on tone', commentaire: '' },
+      { position: 2, designation: 'Élastique taille', matiere: 'Elastic Tape 1cm', ref: 'ELAS-1CM', fournisseur: 'EV FASHION', quantite: '0.7', unite: 'ml', coloris: 'Blanc', commentaire: 'Fronces taille' },
+      { position: 3, designation: 'Fusible', matiere: 'Light Fusible', ref: 'LIGHT-FUS', fournisseur: 'EV FASHION', quantite: '0.3', unite: 'ml', coloris: 'Blanc', commentaire: 'Encolure' },
+    ] },
 }
 
 async function seed() {
@@ -298,6 +308,75 @@ async function seed() {
         [prod.id, S.ft, S.fcm, S.mes, S.pm, S.com, S.lab, S.cro, adminId])
     }
     console.log(`  ✓ Fiche technique ${name}`)
+  }
+
+  // 7. Workflows de validation
+  console.log('\n6. Workflows de validation...')
+  await q(`DELETE FROM validation_workflows WHERE product_id IN (
+    SELECT id FROM products WHERE reference LIKE '%HVA%' OR reference LIKE '%EVA%')`)
+  const WORKFLOWS = [
+    { product: 'JERRY',  stage: 'proto_1', decision: 'approuve',  next_stage: 'proto_2', due: '2026-03-15', decided: '2026-03-14',
+      comments: 'Proto 1 validé. Reprendre l\'aplomb des emmanchures pour le P2.' },
+    { product: 'BELL',   stage: 'proto_2', decision: 'en_attente', next_stage: 'sms', due: '2026-05-10', decided: null,
+      comments: 'En attente du retour matière EV FASHION avant validation P2.' },
+    { product: 'DOMPAY', stage: 'sms',     decision: 'en_attente', next_stage: 'valide', due: '2026-05-20', decided: null,
+      comments: 'SMS reçu, contrôle qualité en cours sur la tenue du velours.' },
+    { product: 'LAUREN', stage: 'proto_1', decision: 'rejete',    next_stage: null, due: '2026-04-05', decided: '2026-04-06',
+      comments: 'Proto 1 refusé : tombé de la robe à revoir, longueur à ajuster.' },
+    { product: 'HALISSON', stage: 'concept', decision: 'en_attente', next_stage: 'proto_1', due: '2026-05-30', decided: null,
+      comments: 'Validation du concept avant lancement du premier proto.' },
+  ]
+  for (const w of WORKFLOWS) {
+    const prod = byName[w.product]
+    if (!prod) continue
+    await q(`INSERT INTO validation_workflows (product_id, stage, requested_by, due_date, decision,
+             decided_by, decided_at, comments, next_stage)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+      [prod.id, w.stage, adminId, w.due, w.decision,
+       w.decided ? adminId : null, w.decided, w.comments, w.next_stage])
+    console.log(`  ✓ Workflow ${w.product} (${w.stage} · ${w.decision})`)
+  }
+
+  // 8. Costing complet (2 exemples)
+  console.log('\n7. Costing...')
+  const COSTINGS = [
+    { product: 'JERRY', wholesale: 74, retail: 185, cmt: 22, accessories: 6.5, transport: 3.2, customs: 1.8,
+      lines: [
+        { category: 'matiere', label: 'Velours Milleraies (1.5 ml)', quantity: 1.5, unit_price: 8.4, amount: 12.6, supplier: suppliers.blueDimo },
+        { category: 'matiere', label: 'Doublure 100% CO (1.2 ml)', quantity: 1.2, unit_price: 2.1, amount: 2.52, supplier: suppliers.blueDimo },
+        { category: 'fourniture', label: 'Thermocollant (0.3 ml)', quantity: 0.3, unit_price: 1.2, amount: 0.36, supplier: suppliers.blueDimo },
+        { category: 'facon', label: 'Confection (CMT)', quantity: 1, unit_price: 22, amount: 22, supplier: suppliers.blueDimo },
+        { category: 'fourniture', label: 'Boutons + zip + étiquettes', quantity: 1, unit_price: 6.5, amount: 6.5, supplier: suppliers.blueDimo },
+        { category: 'logistique', label: 'Transport + douane', quantity: 1, unit_price: 5, amount: 5, supplier: null },
+      ] },
+    { product: 'BELL', wholesale: 52, retail: 129, cmt: 16, accessories: 4.2, transport: 2.5, customs: 1.3,
+      lines: [
+        { category: 'matiere', label: 'Voile Façonné (2.0 ml)', quantity: 2.0, unit_price: 6.9, amount: 13.8, supplier: suppliers.evFashion },
+        { category: 'fourniture', label: 'Light Fusible (0.3 ml)', quantity: 0.3, unit_price: 1.4, amount: 0.42, supplier: suppliers.evFashion },
+        { category: 'fourniture', label: 'Elastic Tape (0.5 ml)', quantity: 0.5, unit_price: 0.6, amount: 0.3, supplier: suppliers.evFashion },
+        { category: 'facon', label: 'Confection (CMT)', quantity: 1, unit_price: 16, amount: 16, supplier: suppliers.evFashion },
+        { category: 'fourniture', label: 'Boutons + étiquettes', quantity: 1, unit_price: 4.2, amount: 4.2, supplier: suppliers.evFashion },
+        { category: 'logistique', label: 'Transport + douane', quantity: 1, unit_price: 3.8, amount: 3.8, supplier: null },
+      ] },
+  ]
+  for (const c of COSTINGS) {
+    const prod = byName[c.product]
+    if (!prod) continue
+    await q('DELETE FROM product_costings WHERE product_id = $1', [prod.id])
+    const materials_cost = c.lines.filter(l => ['matiere', 'fourniture'].includes(l.category))
+      .reduce((s, l) => s + l.amount, 0)
+    const { rows: [pc] } = await q(`
+      INSERT INTO product_costings (product_id, version, is_current, materials_cost, cmt_cost,
+        accessories_cost, transport_cost, customs_cost, currency, wholesale_price, retail_price, notes, created_by)
+      VALUES ($1,1,true,$2,$3,$4,$5,$6,'EUR',$7,$8,$9,$10) RETURNING id`,
+      [prod.id, materials_cost.toFixed(2), c.cmt, c.accessories, c.transport, c.customs,
+       c.wholesale, c.retail, 'Costing prévisionnel — collection VB Hiver 2026.', adminId])
+    for (const l of c.lines) {
+      await q(`INSERT INTO costing_lines (costing_id, category, label, quantity, unit_price, amount, currency, supplier_id)
+               VALUES ($1,$2,$3,$4,$5,$6,'EUR',$7)`,
+        [pc.id, l.category, l.label, l.quantity, l.unit_price, l.amount, l.supplier])
+    }
+    console.log(`  ✓ Costing ${c.product} (PVP ${c.retail}€, ${c.lines.length} lignes)`)
   }
 
   await pool.end()
