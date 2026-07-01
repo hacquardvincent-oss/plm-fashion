@@ -56,6 +56,7 @@ app.use('/api/spec-sheets', require('./routes/specsheets'));
 app.use('/api/purchases',     require('./routes/purchases'));
 app.use('/api/integrations', require('./routes/integrations'));
 app.use('/api/exports',      require('./routes/exports'));
+app.use('/api/analytics',    require('./routes/analytics'));
 
 // ── HEALTH CHECK ──────────────────────────────────────────────
 app.get('/health', async (req, res) => {
