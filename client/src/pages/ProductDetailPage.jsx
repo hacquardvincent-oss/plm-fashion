@@ -3,9 +3,9 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   ArrowLeft, Package, FileText, Calculator,
-  GitMerge, Scissors, Palette, Plus, Trash2, Pencil, Send, ClipboardList,
+  GitMerge, Scissors, Palette, Plus, Trash2, Pencil, Send, ClipboardList, History, ChevronRight, Check,
 } from 'lucide-react'
-import { getProduct } from '../api/products.api'
+import { getProduct, createProductVersion, updateProductVersion, addVersionBomLine, deleteVersionBomLine } from '../api/products.api'
 import { deleteBomLine } from '../api/products.api'
 import Badge from '../components/ui/Badge'
 import Spinner from '../components/ui/Spinner'
@@ -19,12 +19,194 @@ import { formatCurrency, formatDate, PRODUCT_TYPE_LABELS } from '../utils/status
 import { useAuth } from '../hooks/useAuth'
 
 const TABS = [
+  { id: 'versions', label: 'Versions', icon: History },
   { id: 'fiche', label: 'Fiche', icon: FileText },
   { id: 'bom', label: 'BOM', icon: Scissors },
   { id: 'variantes', label: 'Variantes', icon: Palette },
   { id: 'costing', label: 'Costing', icon: Calculator },
   { id: 'workflows', label: 'Workflows', icon: GitMerge },
 ]
+
+const VERSION_STATUS_LABELS = {
+  concept: 'Concept', proto_1: 'Proto 1', proto_2: 'Proto 2',
+  sms: 'SMS', valide: 'Validé', abandonne: 'Abandonné',
+}
+const VERSION_STATUS_STYLES = {
+  concept: 'bg-gray-100 text-gray-600',
+  proto_1: 'bg-blue-100 text-blue-700',
+  proto_2: 'bg-indigo-100 text-indigo-700',
+  sms: 'bg-orange-100 text-orange-700',
+  valide: 'bg-emerald-100 text-emerald-700',
+  abandonne: 'bg-red-100 text-red-600',
+}
+
+function NewVersionModal({ open, onClose, productId, versions }) {
+  const qc = useQueryClient()
+  const [form, setForm] = useState({ label: '', status: 'proto_1', proto_size: '', coloris: '', notes: '', copy_bom: true })
+  const mutation = useMutation({
+    mutationFn: (data) => createProductVersion(productId, data),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['products', productId] }); onClose() },
+  })
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
+  if (!open) return null
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-dark/20 backdrop-blur-sm">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <h3 className="font-serif text-xl text-dark">Nouvelle version</h3>
+        <div className="space-y-3">
+          <div>
+            <label className="label">Label</label>
+            <input className="input" placeholder={`Proto ${(versions?.length ?? 0) + 1}`} value={form.label} onChange={set('label')} />
+          </div>
+          <div>
+            <label className="label">Statut</label>
+            <select className="input" value={form.status} onChange={set('status')}>
+              {Object.entries(VERSION_STATUS_LABELS).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Taille proto</label>
+              <input className="input" placeholder="ex: 36" value={form.proto_size} onChange={set('proto_size')} />
+            </div>
+            <div>
+              <label className="label">Coloris</label>
+              <input className="input" placeholder="ex: NAVY" value={form.coloris} onChange={set('coloris')} />
+            </div>
+          </div>
+          <div>
+            <label className="label">Notes</label>
+            <textarea className="input" rows={2} value={form.notes} onChange={set('notes')} />
+          </div>
+          <label className="flex items-center gap-2 text-sm text-dark/70 cursor-pointer">
+            <input type="checkbox" checked={form.copy_bom} onChange={set('copy_bom')} className="rounded" />
+            Copier le BOM de la version précédente
+          </label>
+        </div>
+        <div className="flex gap-2 pt-2">
+          <button onClick={onClose} className="btn-secondary flex-1">Annuler</button>
+          <button
+            onClick={() => mutation.mutate({ label: form.label || undefined, status: form.status, proto_size: form.proto_size || null, coloris: form.coloris || null, notes: form.notes || null })}
+            disabled={mutation.isPending}
+            className="btn-primary flex-1"
+          >Créer</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TabVersions({ product }) {
+  const qc = useQueryClient()
+  const { user } = useAuth()
+  const [selectedId, setSelectedId] = useState(null)
+  const [newOpen, setNewOpen] = useState(false)
+  const versions = product.versions ?? []
+  const selected = selectedId ? versions.find((v) => v.id === selectedId) : versions.find((v) => v.is_current) ?? versions[versions.length - 1]
+
+  const statusMutation = useMutation({
+    mutationFn: ({ versionId, status }) => updateProductVersion(product.id, versionId, { status }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['products', product.id] }),
+  })
+
+  if (versions.length === 0) {
+    return (
+      <div className="py-12 text-center text-dark/30 text-sm space-y-3">
+        <p>Aucune version enregistrée</p>
+        {CAN_EDIT.includes(user?.role) && (
+          <button onClick={() => setNewOpen(true)} className="btn-primary mx-auto">
+            <Plus size={14} /> Créer la première version
+          </button>
+        )}
+        <NewVersionModal open={newOpen} onClose={() => setNewOpen(false)} productId={product.id} versions={versions} />
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-5">
+      {/* Timeline */}
+      <div className="flex items-center gap-0 overflow-x-auto pb-2">
+        {versions.map((v, i) => (
+          <div key={v.id} className="flex items-center">
+            <button
+              onClick={() => setSelectedId(v.id)}
+              className={`flex flex-col items-center px-3 py-2 rounded-xl transition-all min-w-[90px] border ${
+                (selected?.id === v.id)
+                  ? 'border-gold bg-gold/5'
+                  : 'border-transparent hover:bg-cream'
+              }`}
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold mb-1 ${
+                v.status === 'valide' ? 'bg-emerald-100 text-emerald-700' :
+                v.is_current ? 'bg-gold text-white' : 'bg-dark/10 text-dark/50'
+              }`}>
+                {v.status === 'valide' ? <Check size={14} /> : `V${v.version_number}`}
+              </div>
+              <span className="text-[10px] font-medium text-dark/70 leading-tight text-center">{v.label}</span>
+              <span className={`text-[9px] px-1.5 py-0.5 rounded-full mt-1 font-medium ${VERSION_STATUS_STYLES[v.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                {VERSION_STATUS_LABELS[v.status] ?? v.status}
+              </span>
+            </button>
+            {i < versions.length - 1 && <ChevronRight size={14} className="text-dark/20 shrink-0 mx-0.5" />}
+          </div>
+        ))}
+        {CAN_EDIT.includes(user?.role) && (
+          <button onClick={() => setNewOpen(true)} className="ml-2 shrink-0 w-8 h-8 rounded-full border-2 border-dashed border-dark/20 hover:border-gold text-dark/30 hover:text-gold flex items-center justify-center transition-colors">
+            <Plus size={14} />
+          </button>
+        )}
+      </div>
+
+      {/* Selected version detail */}
+      {selected && (
+        <div className="border border-dark/5 rounded-xl p-4 space-y-4">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="font-semibold text-dark">{selected.label}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${VERSION_STATUS_STYLES[selected.status] ?? 'bg-gray-100 text-gray-500'}`}>
+                  {VERSION_STATUS_LABELS[selected.status] ?? selected.status}
+                </span>
+                {selected.is_current && <span className="text-xs px-2 py-0.5 rounded-full bg-gold/10 text-gold font-medium">Actuelle</span>}
+              </div>
+              <div className="flex gap-4 mt-1 text-xs text-dark/40">
+                {selected.proto_size && <span>Taille: {selected.proto_size}</span>}
+                {selected.coloris && <span>Coloris: {selected.coloris}</span>}
+                {selected.created_by_name && <span>par {selected.created_by_name}</span>}
+              </div>
+              {selected.notes && <p className="text-xs text-dark/50 mt-1 italic">{selected.notes}</p>}
+            </div>
+            {CAN_EDIT.includes(user?.role) && selected.status !== 'valide' && selected.status !== 'abandonne' && (
+              <div className="flex gap-2 shrink-0">
+                {selected.status !== 'sms' && (
+                  <button
+                    onClick={() => statusMutation.mutate({ versionId: selected.id, status: 'sms' })}
+                    disabled={statusMutation.isPending}
+                    className="px-3 py-1.5 bg-orange-50 text-orange-700 text-xs font-medium rounded-lg hover:bg-orange-100 transition-colors"
+                  >→ SMS</button>
+                )}
+                <button
+                  onClick={() => statusMutation.mutate({ versionId: selected.id, status: 'valide' })}
+                  disabled={statusMutation.isPending}
+                  className="px-3 py-1.5 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-lg hover:bg-emerald-100 transition-colors"
+                >✓ Valider</button>
+              </div>
+            )}
+          </div>
+
+          {/* Version BOM */}
+          <div>
+            <p className="text-xs font-medium text-dark/40 uppercase tracking-wider mb-2">Nomenclature ({selected.bom_count ?? 0} matière{selected.bom_count !== 1 ? 's' : ''})</p>
+            <p className="text-xs text-dark/30 italic">Ouvrir la version pour éditer le BOM détaillé.</p>
+          </div>
+        </div>
+      )}
+
+      <NewVersionModal open={newOpen} onClose={() => setNewOpen(false)} productId={product.id} versions={versions} />
+    </div>
+  )
+}
 
 const CAN_EDIT = ['admin', 'chef_produit', 'directeur_artistique']
 const CAN_DECIDE = ['admin', 'chef_produit', 'direction', 'qualite']
@@ -271,7 +453,7 @@ function TabWorkflows({ product }) {
 export default function ProductDetailPage() {
   const { id } = useParams()
   const { user } = useAuth()
-  const [tab, setTab] = useState('fiche')
+  const [tab, setTab] = useState('versions')
   const [editOpen, setEditOpen] = useState(false)
 
   const { data: product, isLoading } = useQuery({
@@ -336,6 +518,7 @@ export default function ProductDetailPage() {
           {tab === 'bom' && <TabBOM product={product} />}
           {tab === 'variantes' && <TabVariantes product={product} />}
           {tab === 'costing' && <TabCosting product={product} />}
+          {tab === 'versions' && <TabVersions product={product} />}
           {tab === 'workflows' && <TabWorkflows product={product} />}
         </div>
       </div>
