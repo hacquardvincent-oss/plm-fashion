@@ -167,4 +167,187 @@ router.get('/collections', async (req, res) => {
   }
 });
 
+// ══════════════════════════════════════════════════════════════
+//  PERFORMANCE COMMERCIALE (sell-in réalisé par canal)
+// ══════════════════════════════════════════════════════════════
+
+// GET /api/analytics/commercial/overview — KPI commerciaux globaux
+router.get('/commercial/overview', async (req, res) => {
+  try {
+    const { clause, params } = orgFilter(req);
+    const r = await query(`
+      SELECT
+        SUM(cp.ordered_revenue)                                  AS ca_commande,
+        SUM(cp.purchase_cost)                                    AS cout_achat,
+        SUM(cp.returns_amount)                                   AS retours,
+        SUM(cp.ordered_qty)::bigint                              AS qte_commandee,
+        SUM(cp.returns_qty)::bigint                              AS qte_retours,
+        SUM(cp.ordered_revenue) FILTER (WHERE cp.channel = 'retail')    AS ca_retail,
+        SUM(cp.ordered_revenue) FILTER (WHERE cp.channel = 'digital')   AS ca_digital,
+        SUM(cp.ordered_revenue) FILTER (WHERE cp.channel = 'wholesale') AS ca_wholesale
+      FROM channel_performance cp
+      JOIN products p ON p.id = cp.product_id
+      WHERE 1=1${clause}
+    `, params);
+    const o = r.rows[0];
+    const ca = Number(o.ca_commande || 0);
+    const cost = Number(o.cout_achat || 0);
+    const retours = Number(o.retours || 0);
+    const caNet = ca - retours;
+    const margeBrute = caNet - cost;
+    res.json({
+      ca_commande: ca,
+      ca_net: caNet,
+      cout_achat: cost,
+      retours,
+      marge_brute: margeBrute,
+      marge_pct: caNet > 0 ? Number(((margeBrute / caNet) * 100).toFixed(1)) : null,
+      taux_retour: Number(o.qte_commandee) > 0
+        ? Number(((Number(o.qte_retours) / Number(o.qte_commandee)) * 100).toFixed(1)) : 0,
+      qte_commandee: Number(o.qte_commandee || 0),
+      mix: {
+        retail: Number(o.ca_retail || 0),
+        digital: Number(o.ca_digital || 0),
+        wholesale: Number(o.ca_wholesale || 0),
+      },
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/analytics/commercial/products — rentabilité réalisée par référence
+router.get('/commercial/products', async (req, res) => {
+  try {
+    const { clause, params } = orgFilter(req);
+    const r = await query(`
+      SELECT
+        p.id, p.reference, p.name, p.status,
+        c.name AS collection_name, c.code AS collection_code,
+        SUM(cp.ordered_qty)::bigint     AS qte_commandee,
+        SUM(cp.ordered_revenue)         AS ca_commande,
+        SUM(cp.purchase_cost)           AS cout_achat,
+        SUM(cp.returns_amount)          AS retours,
+        SUM(cp.returns_qty)::bigint     AS qte_retours,
+        AVG(cp.unit_pri)                AS pri,
+        SUM(cp.ordered_revenue) FILTER (WHERE cp.channel='retail')    AS ca_retail,
+        SUM(cp.ordered_revenue) FILTER (WHERE cp.channel='digital')   AS ca_digital,
+        SUM(cp.ordered_revenue) FILTER (WHERE cp.channel='wholesale') AS ca_wholesale
+      FROM channel_performance cp
+      JOIN products p ON p.id = cp.product_id
+      LEFT JOIN collections c ON c.id = p.collection_id
+      WHERE 1=1${clause}
+      GROUP BY p.id, c.name, c.code
+      ORDER BY (SUM(cp.ordered_revenue) - SUM(cp.returns_amount) - SUM(cp.purchase_cost)) DESC
+    `, params);
+    const rows = r.rows.map((p) => {
+      const ca = Number(p.ca_commande || 0);
+      const retours = Number(p.retours || 0);
+      const cost = Number(p.cout_achat || 0);
+      const caNet = ca - retours;
+      const marge = caNet - cost;
+      return {
+        id: p.id, reference: p.reference, name: p.name, status: p.status,
+        collection_name: p.collection_name, collection_code: p.collection_code,
+        qte_commandee: Number(p.qte_commandee || 0),
+        ca_commande: ca, ca_net: caNet, cout_achat: cost, retours,
+        pri: p.pri != null ? Number(Number(p.pri).toFixed(2)) : null,
+        marge_brute: marge,
+        marge_pct: caNet > 0 ? Number(((marge / caNet) * 100).toFixed(1)) : null,
+        taux_retour: Number(p.qte_commandee) > 0
+          ? Number(((Number(p.qte_retours) / Number(p.qte_commandee)) * 100).toFixed(1)) : 0,
+        mix: {
+          retail: Number(p.ca_retail || 0),
+          digital: Number(p.ca_digital || 0),
+          wholesale: Number(p.ca_wholesale || 0),
+        },
+      };
+    });
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/analytics/commercial/collections — P&L par collection
+router.get('/commercial/collections', async (req, res) => {
+  try {
+    const { clause, params } = orgFilter(req);
+    const r = await query(`
+      SELECT
+        c.id, c.code, c.name, c.season, c.year,
+        SUM(cp.ordered_revenue)  AS ca_commande,
+        SUM(cp.purchase_cost)    AS cout_achat,
+        SUM(cp.returns_amount)   AS retours,
+        SUM(cp.ordered_qty)::bigint AS qte_commandee,
+        SUM(cp.returns_qty)::bigint AS qte_retours
+      FROM channel_performance cp
+      JOIN products p ON p.id = cp.product_id
+      JOIN collections c ON c.id = p.collection_id
+      WHERE 1=1${clause}
+      GROUP BY c.id
+      ORDER BY SUM(cp.ordered_revenue) DESC
+    `, params);
+    const rows = r.rows.map((c) => {
+      const ca = Number(c.ca_commande || 0);
+      const retours = Number(c.retours || 0);
+      const cost = Number(c.cout_achat || 0);
+      const caNet = ca - retours;
+      const marge = caNet - cost;
+      return {
+        id: c.id, code: c.code, name: c.name, season: c.season, year: c.year,
+        ca_commande: ca, ca_net: caNet, cout_achat: cost, retours, marge_brute: marge,
+        marge_pct: caNet > 0 ? Number(((marge / caNet) * 100).toFixed(1)) : null,
+        taux_retour: Number(c.qte_commandee) > 0
+          ? Number(((Number(c.qte_retours) / Number(c.qte_commandee)) * 100).toFixed(1)) : 0,
+      };
+    });
+    res.json(rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// GET /api/analytics/commercial/funnel — funnel digital agrégé
+router.get('/commercial/funnel', async (req, res) => {
+  try {
+    const { clause, params } = orgFilter(req);
+    const r = await query(`
+      SELECT
+        SUM(cp.impressions)::bigint   AS impressions,
+        SUM(cp.product_views)::bigint AS product_views,
+        SUM(cp.cart_adds)::bigint     AS cart_adds,
+        SUM(cp.ordered_qty)::bigint   AS purchases,
+        SUM(cp.returns_qty)::bigint   AS returns
+      FROM channel_performance cp
+      JOIN products p ON p.id = cp.product_id
+      WHERE cp.channel = 'digital'${clause}
+    `, params);
+    const f = r.rows[0];
+    const impressions = Number(f.impressions || 0);
+    const views = Number(f.product_views || 0);
+    const cartAdds = Number(f.cart_adds || 0);
+    const purchases = Number(f.purchases || 0);
+    const returns = Number(f.returns || 0);
+    const pct = (a, b) => (b > 0 ? Number(((a / b) * 100).toFixed(1)) : 0);
+    res.json({
+      steps: [
+        { key: 'impressions', label: 'Impressions', value: impressions, rate: 100 },
+        { key: 'views',       label: 'Vues fiche',  value: views,     rate: pct(views, impressions) },
+        { key: 'cart_adds',   label: 'Ajouts panier', value: cartAdds, rate: pct(cartAdds, views) },
+        { key: 'purchases',   label: 'Achats',      value: purchases, rate: pct(purchases, cartAdds) },
+      ],
+      returns,
+      return_rate: pct(returns, purchases),
+      global_conversion: pct(purchases, impressions),
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
 module.exports = router;

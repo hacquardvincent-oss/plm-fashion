@@ -13,7 +13,9 @@
     "fix:encoding": "node scripts/fix_encoding.js",
     "migrate:multitenant": "node scripts/migrate_multitenant.js",
     "seed:vb26h": "node scripts/seed_vb26h.js",
-    "migrate:versioning": "node scripts/migrate_versioning.js"
+    "migrate:versioning": "node scripts/migrate_versioning.js",
+    "migrate:commercial": "node scripts/migrate_commercial.js",
+    "seed:commercial": "node scripts/seed_commercial.js"
   },
   "dependencies": {
     "docx": "^8.5.0",
