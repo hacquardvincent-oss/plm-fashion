@@ -50,3 +50,15 @@ par canal) → Validation (**Time & Action**) → Achats/PO → Prod → Livrais
 |----|------|--------|------|
 | J-001 | P0 | S | **Backup DB automatisé** (GitHub Actions planifié + rétention) — perte de données déjà survenue |
 | J-002 | P1 | S | **Secrets** : rotation `JWT_SECRET` + scan de l'historique git |
+
+## Mandat d'ambition fonctionnelle (retours Vincent — 06/07)
+> Principe : ne jamais s'arrêter au happy-path minimal. Chaque module doit être **auto-challengé
+> contre le standard marché** et livré en **workflow abouti**. On développe aujourd'hui ~10 % du
+> potentiel ; la cible est la profondeur fonctionnelle réelle. Vincent apporte la **valeur
+> d'hybridation** par-dessus une base solide.
+
+| ID | Prio | Effort | Fonctionnalité | Justification |
+|----|------|--------|----------------|---------------|
+| P-016 | P0 | M | **FTP : exposer toute la profondeur dans l'UI** (édition après création, versioning, workflow riche piloté) | ⚠️ Le modèle est en avance sur l'UI : la BDD **Neon** existe, l'enum `product_status` a déjà **8 états** (concept→proto_1/2→sms→valide→abandonne→archive) et un module **Versioning produit** existe. Le gap est l'**exposition UI**, pas la fondation. À confirmer par audit code. |
+| P-017 | P1 | L | **Moteur PLM → eshop** (à la validation produit, génération auto de fiches **SEO/GEO optimisées** : titres, descriptions, attributs, balisage) pour armer la force de vente | Hybridation : transforme le PLM en levier commercial. Étend le module fiches commerciales existant + P-A05. |
+| P-018 | P1 | M | **Auto-challenge continu** : chaque module comparé au standard (Centric/FlexPLM) → écarts remontés en reco | Institutionnalise « viser 100 % du potentiel ». |
