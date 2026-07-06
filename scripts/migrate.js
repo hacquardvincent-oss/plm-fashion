@@ -1,4 +1,6 @@
 require('dotenv').config();
+require('../config/checkEnv').checkEnv(); // fail-fast : refuse de migrer avec des secrets manquants/placeholder
+const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/database');
@@ -18,7 +20,9 @@ async function migrate() {
     // Créer l'utilisateur admin par défaut si inexistant
     const bcrypt = require('bcryptjs');
     const adminEmail = process.env.ADMIN_EMAIL || 'admin@plm-fashion.com';
-    const adminPassword = process.env.ADMIN_PASSWORD || 'Admin1234!';
+    // Plus de mot de passe en dur : si ADMIN_PASSWORD n'est pas fourni, on en génère un aléatoire.
+    const generatedPassword = !process.env.ADMIN_PASSWORD;
+    const adminPassword = process.env.ADMIN_PASSWORD || crypto.randomBytes(12).toString('base64url');
 
     const exists = await client.query('SELECT id FROM users WHERE email = $1', [adminEmail]);
     if (!exists.rows.length) {
@@ -29,7 +33,11 @@ async function migrate() {
         [adminEmail, hash]
       );
       console.log(`✅ Utilisateur admin créé : ${adminEmail}`);
-      console.log(`   ⚠️  Changez le mot de passe en production !`);
+      if (generatedPassword) {
+        console.log(`   🔑 Mot de passe généré (affiché une seule fois, notez-le) : ${adminPassword}`);
+      } else {
+        console.log(`   ⚠️  Changez le mot de passe en production !`);
+      }
     } else {
       console.log('ℹ️  Utilisateur admin déjà existant');
     }

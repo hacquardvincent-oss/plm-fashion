@@ -1,4 +1,5 @@
 require('dotenv').config();
+require('../config/checkEnv').checkEnv(); // fail-fast : refuse de booter avec des secrets manquants/placeholder
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
