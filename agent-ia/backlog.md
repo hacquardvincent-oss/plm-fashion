@@ -1,34 +1,52 @@
 # Backlog PRODUIT — PLM Fashion & Maroquinerie
 
-> Rempli par **Agent IA (double métier)**. Backlog **générique** = valable pour tous les
-> clients, donc au niveau produit. **Cycle 0 / pré-audit** (lecture CONTEXT.md + domaine) ;
-> audit sourcé à suivre. La session produit arbitre via `registre.md`.
+> Rempli par **Agent IA (double métier)**. Version **sourcée** (voir
+> `audits/2026-07-06-audit-metier-produit.md`). Backlog **générique** (valable pour tous les
+> clients) = niveau produit. La session produit arbitre via `registre.md`.
 
-Priorité : `P0` critique · `P1` important · `P2` confort · 🤖 = enjeu AI-Native
+Priorité : `P0` critique · `P1` important · `P2` confort — Effort : `S`/`M`/`L`/`XL` (à confirmer après lecture code) — 🤖 AI-Native
 
-## Workflow métier cible (esquisse)
-Brief → Line/Range plan → Design & croquis → Colorways → FTP + BOM → Sourcing/RFQ →
-Prototype → **Fitting sessions** (SMS/PPS) → Lab dips/strike-offs → Costing par canal →
-Validation (Time & Action) → Achats/PO → Production → Livraison.
-_Couverture actuelle : surtout le milieu de chaîne (FTP/BOM/Costing/Achats). Manquent le
-haut de chaîne collection, le cycle sampling, et la conformité maroquinerie._
+## Workflow cible
+MFP/OTB → Line/Range plan → Design & croquis → **Colorways** → FTP + BOM → Sourcing/RFQ →
+Prototype (proto→SMS→PPS) → **Fitting sessions** → **Lab dips/strike-offs** → Costing (landed,
+par canal) → Validation (**Time & Action**) → Achats/PO → Prod → Livraison → **DPP**.
 
-## Propositions produit
-| ID | Prio | Fonctionnalité | Justification métier |
-|----|------|----------------|----------------------|
-| P-001 | P0 | **Time & Action Calendar** (rétroplanning critique, jalons, alertes) | Colonne vertébrale d'un PLM mode ; pilotage de collection. |
-| P-002 | P0 | **Colorways** (déclinaison coloris) | Un modèle = N coloris ; structure FTP, costing, achats. |
-| P-003 | P1 | **Line/Range plan** (plan de collection, assortiment, budget) | Cadre ce qu'une équipe collection construit avant le design. |
-| P-004 | P1 | **Cycle prototype/sample + fitting sessions** (proto→SMS→PPS) | Cœur du dev produit ; absent aujourd'hui. |
-| P-005 | P1 | **Lab dips / strike-offs** (validation coloris/imprimés) | Jalon qualité avant production. |
-| P-006 | P0 | **Maroquinerie : traçabilité cuir + conformité CITES/REACH** | Spécifique maroquinerie ; risque légal si absent. |
-| P-007 | P2 | **Boucle RFQ fournisseur** (appel d'offres → prix retenu) | Étend Achats vers la négociation amont. |
-| P-008 | P1 | **Permissions par rôle** (styliste, modéliste, acheteur, fournisseur) | Prérequis partage externe & robustesse. |
+## Métier — cœur collection
+| ID | Prio | Effort | Fonctionnalité | Justification |
+|----|------|--------|----------------|---------------|
+| P-001 | P0 | L | **Time & Action Calendar / critical path** (jalons à rebours, dépendances, alertes retard) | Colonne vertébrale ; le retard amont fait glisser tout l'aval. |
+| P-002 | P0 | M | **Colorways** (un modèle = N coloris ; propagation FTP/BOM/costing/achats) | Structure de base non modélisée aujourd'hui. |
+| P-003 | P1 | L | **Line/Range plan** (assortiment styles/coloris/tailles + budget par famille) | Amont collection ; cadre ce qui est développé. |
+| P-004 | P1 | L | **Cycle sample** (demandes proto → SMS → PPS, rounds, statuts) | Cœur du dev produit, invisible actuellement. |
+| P-005 | P1 | M | **Fitting sessions** (planif, commentaires, révisions de mesures) | Jalon de mise au point produit. |
+| P-006 | P1 | M | **Lab dips / strike-offs** (validation coloris & imprimés, aller-retour fournisseur) | Jalon qualité couleur avant prod. |
+| P-007 | P1 | L | **Costing détaillé** (matières+façon+trims+transport+douanes = **landed cost**, **par canal**, scénarios, versions) | Le costing basique actuel ne protège pas la marge. |
+| P-008 | P2 | M | **Boucle RFQ fournisseur** (appel d'offres multi → comparaison → prix retenu) | Étend Achats vers la négociation amont. |
+| P-009 | P2 | M | **Grading / size run** (tableau de mesures gradé complet) | Complète la FTP existante. |
+| P-010 | P1 | M | **Permissions par rôle** (styliste, modéliste, acheteur, fournisseur) | Prérequis partage externe & robustesse multi-utilisateurs. |
+| P-011 | P2 | M | **Export PDF tech pack + partage externe** (lien fournisseur) | Collaboration hors plateforme. |
 
-## Axe AI-Native (à développer — mandat Tiraboschi → produit)
-| ID | Prio | Piste | Idée |
-|----|------|-------|------|
-| P-A01 | P1 🤖 | Design/croquis assist | Génération/variation de croquis & détails à partir du brief. |
-| P-A02 | P1 🤖 | Sourcing & costing assistés | Suggestion matières/fournisseurs + estimation coût de revient. |
-| P-A03 | P2 🤖 | GEO/SEO génératif | Déjà amorcé (fiches commerciales) — à étendre & industrialiser. |
-| P-A04 | P2 🤖 | Contrôle qualité assisté | Aide à la détection d'écarts sur réception (module Achats). |
+## Maroquinerie & conformité
+| ID | Prio | Effort | Fonctionnalité | Justification |
+|----|------|--------|----------------|---------------|
+| P-012 | P1 | L | **Traçabilité cuir** (liens batch hide→produit, due diligence tier-n) | Exigence luxe + EUDR. |
+| P-013 | P0* | M | **Gestion certificats CITES** (cuirs exotiques : espèce, origine, docs) | *P0 pour la maroquinerie exotique — risque **légal** à l'export. |
+| P-014 | P1 | M | **REACH / substances of concern** (déclaration, seuils) | Conformité chimique UE. |
+| P-015 | P1 | L | **DPP-ready** (data model des 49 points ESPR, prêt pour SS2028) | Anticipation réglementaire = avantage concurrentiel. |
+
+## AI-Native (frontière Tiraboschi → produit) 🤖
+| ID | Prio | Effort | Piste | Idée |
+|----|------|--------|-------|------|
+| P-A01 | P1 | M | Design/croquis assist | Génération & variation de croquis/détails depuis le brief. |
+| P-A02 | P2 | L | Trend forecasting | Suggestions collection commercialement viables (données marché). |
+| P-A03 | P1 | M | Sourcing & costing assistés | Suggestion matières/fournisseurs + estimation coût de revient. |
+| P-A04 | P2 | XL | 3D digital sampling | Réduire 60-80 % les échantillons physiques (concept→sample en jours). |
+| P-A05 | P2 | S | GEO/SEO génératif | Extension de l'existant (fiches commerciales). |
+| P-A06 | P2 | L | PLM agentique | Workflows exécutés de bout en bout (la bascule 2026). |
+| P-A07 | P2 | M | QC assisté | Aide à la détection d'écarts en réception (module Achats). |
+
+## Projet / infra (voir audit projet côté plm-vb)
+| ID | Prio | Effort | Item |
+|----|------|--------|------|
+| J-001 | P0 | S | **Backup DB automatisé** (GitHub Actions planifié + rétention) — perte de données déjà survenue |
+| J-002 | P1 | S | **Secrets** : rotation `JWT_SECRET` + scan de l'historique git |
