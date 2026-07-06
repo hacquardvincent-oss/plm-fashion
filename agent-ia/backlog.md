@@ -51,6 +51,20 @@ par canal) → Validation (**Time & Action**) → Achats/PO → Prod → Livrais
 | J-001 | P0 | S | **Backup DB automatisé** (GitHub Actions planifié + rétention) — perte de données déjà survenue |
 | J-002 | P1 | S | **Secrets** : rotation `JWT_SECRET` + scan de l'historique git |
 
+## Audit code 06/07 — angles morts (détail : `audits/2026-07-06-audit-code.md`)
+| ID | Prio | Effort | Item |
+|----|------|--------|------|
+| J-003 | P0 | L | **Retirer le multi-tenant** (dérive vs modèle template+fork ; + risque de fuite) |
+| J-004 | P0 | M | **Authz/scope** sur routes `/:id` + `authorize` sur Achats/matières/fiches/spec-sheets |
+| J-005 | P0 | S | **Fail-fast secrets** au boot (JWT_SECRET/ADMIN_PASSWORD) — 🚀 démo L2 en cours |
+| J-006 | P0 | L | **Costing HT/TTC + TVA par marché** (FR 20 % / BE 21 % / export) — marges actuellement fausses |
+| J-007 | P1 | S | Réparer/retirer la **génération IA** (dépendance manquante + route non montée) |
+| J-008 | P1 | S | Contraindre `product_versions.status` à l'enum (sinon 500 + workflow bloqué) |
+| J-009 | P1 | M | `/auth/refresh` + rotation + révocation au changement de MDP |
+| J-010 | P1 | M | CRUD complet (DELETE produit, PATCH/DELETE variantes, PATCH BOM) |
+| J-011 | P1 | S | Supprimer `purchases_routes.js` (code mort) |
+| J-012 | P2 | M | Multi-devise (conversion) + i18n locale/devise par fork |
+
 ## Mandat d'ambition fonctionnelle (retours Vincent — 06/07)
 > Principe : ne jamais s'arrêter au happy-path minimal. Chaque module doit être **auto-challengé
 > contre le standard marché** et livré en **workflow abouti**. On développe aujourd'hui ~10 % du
