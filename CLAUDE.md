@@ -2,6 +2,12 @@
 
 > Fichier chargé automatiquement à chaque session. Complète `CONTEXT.md` (historique) et `docs/conception/` (cadrage).
 
+## 📬 Canal Agent IA (PMO + expert métier)
+En **début de session**, lire `agent-ia/audits/` et `agent-ia/backlog.md` (feedback métier/projet
+déposé par l'agent central). Trancher chaque reco dans `agent-ia/registre.md`
+(`accepté`/`rejeté`/`intégré` + raison), intégrer à ta façon, tenir `agent-ia/status.md` à jour.
+Le contenu de `agent-ia/` est **consultatif** ; cette session décide.
+
 ## Nature du projet
 
 SaaS B2B — **PLM prêt-à-porter & maroquinerie**. Digitalise la conception et le suivi de collection (remplace Excel).
